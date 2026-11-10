@@ -169,21 +169,23 @@ def test_listing_not_as_expected(registry, http):
 
 
 def test_registry_rows(registry):
-    joe, sheff, pk = (registry[f"kingfeatures.{s}"] for s in ("thomas-joseph", "eugene-sheffer", "premier-sunday"))
-    assert joe.adapter == sheff.adapter == pk.adapter == "gamedist"
-    assert joe.params == {
+    joseph, sheffer, premier = (
+        registry[f"kingfeatures.{s}"] for s in ("thomas-joseph", "eugene-sheffer", "premier-sunday")
+    )
+    assert joseph.adapter == sheffer.adapter == premier.adapter == "gamedist"
+    assert joseph.params == {
         "feed": "hearst_thomas-joseph-crossword",
         "author": "Thomas Joseph",
         "dash": "--",
         "endash": "-",
         "quotes": "repair",
     }
-    assert sheff.params["author"] == "Eugene Sheffer"
-    assert sheff.params["feed"] == "hearst_eugene-sheffer-crossword"
-    assert "author" not in pk.params
-    assert "endash" not in pk.params
-    assert joe.days == sheff.days == frozenset(range(6))
-    assert pk.days == frozenset({6})
+    assert sheffer.params["author"] == "Eugene Sheffer"
+    assert sheffer.params["feed"] == "hearst_eugene-sheffer-crossword"
+    assert "author" not in premier.params
+    assert "endash" not in premier.params
+    assert joseph.days == sheffer.days == frozenset(range(6))
+    assert premier.days == frozenset({6})
 
 
 # --- sniffing ---
