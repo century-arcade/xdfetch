@@ -35,8 +35,7 @@ with curly quotes and ellipses made plain ASCII and HTML in clues turned into xd
 | Washington Post games JSON | The Washington Post |
 | Daily Princetonian crossword API | The Daily Princetonian |
 
-Other packages can add formats as converter plugins, through the Python entry-point group
-`xdfetch.converters`; the docstring of `xdfetch.convert` says how.
+Other packages can add formats; see "Adding to xdfetch from another package" below.
 
 ## Outlets
 
@@ -53,10 +52,10 @@ homepage and notes on its files. The column meanings are in `xdfetch/registry.py
 
 Adapters return each file as the outlet served it; converting is a separate step.
 
-## Adding downloaders from another package
+## Adding to xdfetch from another package
 
-Another package can add adapters and outlet rows without changing xdfetch, through
-entry points in its `pyproject.toml`:
+Another package can add adapters, outlet rows and formats without changing xdfetch,
+through three entry-point groups in its `pyproject.toml`:
 
     [project]
     dependencies = ["xdfetch"]
@@ -70,6 +69,14 @@ entry points in its `pyproject.toml`:
     # os.PathLike or importlib.resources Traversable), or a function returning one
     [project.entry-points."xdfetch.registries"]
     mypackage = "mypackage:outlets_tsv"
+
+    # a converter: a (name, sniff, convert) tuple, or an object such as a module
+    # with sniff and convert functions
+    [project.entry-points."xdfetch.converters"]
+    myformat = "mypackage.myformat"
+
+Converter plugins are sniffed before the built-in converters and may hand data back by
+returning None; the docstring of `xdfetch.convert` gives the full shape.
 
 `xdfetch.registry.effective()` reads xdfetch's own rows, then each package's TSV (in
 order of entry-point name), then any files passed to it. A later row with the same

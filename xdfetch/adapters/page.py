@@ -8,8 +8,6 @@ params:
 
 A page that 404s, or has no matching link, is a miss for the date (no puzzle that day), not
 an error. Files are kept under the name the outlet serves them by (the URL's last segment).
-For a numbered series, a row can carry a `number=` param (a regex) for whoever files the
-puzzle to read its number from that name; this adapter doesn't use it.
 """
 
 from __future__ import annotations

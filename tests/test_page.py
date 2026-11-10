@@ -44,5 +44,10 @@ def test_no_post_or_no_link_is_a_miss(registry, http):
         page.PageAdapter(registry["brendanemmettquigley.blog"], http).targets(DAY)
 
 
-def test_number_param(registry):
-    assert registry["brendanemmettquigley.blog"].params["number"] == r"(\d{4})"
+@responses.activate
+def test_params_the_adapter_does_not_use_are_ignored(registry, http):
+    outlet = registry["brendanemmettquigley.blog"]
+    outlet.params = {**outlet.params, "number": r"(\d{4})", "width": "4"}  # filing data for another tool
+    responses.add(responses.GET, POST, body=POST_HTML)
+    (t,) = page.PageAdapter(outlet, http).targets(DAY)
+    assert t.filename == "9999TinyTest.puz"
