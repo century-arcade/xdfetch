@@ -67,6 +67,9 @@ PUBLIC_IDS = [
     "brendanemmettquigley.blog",
     "dailyprincetonian.daily",
     "dailyprincetonian.mini",
+    "kingfeatures.thomas-joseph",
+    "kingfeatures.eugene-sheffer",
+    "kingfeatures.premier-sunday",
 ]
 
 

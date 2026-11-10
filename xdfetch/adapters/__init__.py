@@ -17,6 +17,7 @@ from importlib import metadata
 
 from .base import Adapter, Fetched, MissingSecret, Target
 from .conde import CondeAdapter
+from .gamedist import GameDistAdapter
 from .nyt import NytAdapter
 from .page import PageAdapter
 from .princetonian import PrincetonianAdapter
@@ -30,6 +31,7 @@ ADAPTERS: dict[str, type[Adapter]] = {
     CondeAdapter.name: CondeAdapter,
     PageAdapter.name: PageAdapter,
     PrincetonianAdapter.name: PrincetonianAdapter,
+    GameDistAdapter.name: GameDistAdapter,
 }
 
 
