@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from importlib import metadata
 
-from .base import Adapter, Fetched, Target
+from .base import Adapter, Fetched, MissingSecret, Target
 from .conde import CondeAdapter
 from .nyt import NytAdapter
 from .page import PageAdapter
@@ -70,4 +70,4 @@ def get(name: str) -> type[Adapter]:
     return cls
 
 
-__all__ = ["ADAPTERS", "Adapter", "AdapterError", "Fetched", "Target", "get", "plugin_names"]
+__all__ = ["ADAPTERS", "Adapter", "AdapterError", "Fetched", "MissingSecret", "Target", "get", "plugin_names"]

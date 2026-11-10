@@ -46,6 +46,14 @@ class Fetched:
     modified: str = ""  # the server's Last-Modified as ISO 8601 UTC, where it sends one (static feeds do)
 
 
+class MissingSecret(RuntimeError):
+    """The outlet's `auth` names an environment variable that isn't set. A RuntimeError, as it always was."""
+
+    def __init__(self, outlet_id: str, variable: str):
+        super().__init__(f"{outlet_id}: secret {variable} is not set")
+        self.variable = variable
+
+
 class Adapter:
     name = ""
     # seconds between requests to this adapter's host; None = Http default
@@ -63,7 +71,7 @@ class Adapter:
             return ""
         value = self.secrets.get(name, "")
         if not value:
-            raise RuntimeError(f"{self.outlet.id}: secret {name} is not set")
+            raise MissingSecret(self.outlet.id, name)
         return value
 
     def targets(self, date: dt.date) -> list[Target]:

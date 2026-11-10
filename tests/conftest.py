@@ -6,10 +6,12 @@ A # O      3A Ribbon knot    2D Pull a barge
 B O W
 """
 
+import datetime as dt
 import json
+from typing import TypeVar
 
 import pytest
-from synthetic import puz, puz_section
+from synthetic import UCLICK, puz, puz_section
 
 SOLUTION = ["CAT", "A#O", "BOW"]
 TITLE, AUTHOR, COPYRIGHT = "Tiny", "A. Setter", "© 2026 Nobody"
@@ -58,6 +60,40 @@ def registry():
     from xdfetch import registry as reg
 
     return reg.builtin()
+
+
+# Made-up outlets for the run engine's tests (plan, run, ledger, availability), on example
+# hosts. Times: NOW is 08:00 Eastern on 2026-10-29, so with available_after 3 the 28th is up.
+ENGINE_REGISTRY = """\
+id\tadapter\tparams\tdays\tsince\ttz\tavailable_after\trefetch\thomepage\tauth\tenabled\tnotes
+example.daily\turl\turl=https://example.com/feed/ex%y%m%d.xml\tdaily\t\tAmerica/New_York\t3\t1,2\thttps://example.com/daily/\t\tyes\tA made-up daily feed.
+example.other\turl\turl=https://example.com/other/oth%y%m%d.xml\tdaily\t\tAmerica/New_York\t3\t\thttps://example.com/other/\t\tyes\t
+example.late\turl\turl=https://example.net/late/%Y%m%d.puz\tdaily\t\tAmerica/New_York\t6\t\thttps://example.net/\t\tyes\t
+example.early\turl\turl=https://example.org/early/%Y-%m-%d.json\tdaily\t\tAmerica/New_York\t-2\t\t\t\tyes\tPosted the evening before.
+example.off\turl\turl=https://example.org/off/%Y%m%d.puz\tsun\t\tAmerica/New_York\t0\t\t\t\tno\tNo longer fetched.
+"""  # noqa: E501
+NOW = dt.datetime(2026, 10, 29, 12, 0, tzinfo=dt.UTC)
+YESTERDAY = dt.date(2026, 10, 28)
+RAW = UCLICK  # any bytes would do: a run keeps files as served and never converts them
+
+
+T = TypeVar("T")
+
+
+def present(x: T | None) -> T:
+    """x, which the test expects not to be None."""
+    assert x is not None
+    return x
+
+
+@pytest.fixture
+def engine_registry(tmp_path):
+    """The made-up outlets above, on their own (no built-in rows)."""
+    from xdfetch import registry as reg
+
+    f = tmp_path / "engine-outlets.tsv"
+    f.write_text(ENGINE_REGISTRY, encoding="utf-8")
+    return reg.from_files([f])
 
 
 @pytest.fixture
