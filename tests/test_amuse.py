@@ -393,6 +393,32 @@ def test_untitled_puzzle_is_titled_by_date_and_block_marks_are_styling():
     assert p.tricky == []
 
 
+@pytest.mark.parametrize(
+    ("value", "title"),
+    [("weekday", "Wednesday, October 28, 2026"), ("other", "October 28, 2026"), (None, "October 28, 2026")],
+)
+def test_date_title_param(value, title):
+    d = amuse()
+    d["title"] = ""
+    params = {"date_title": value} if value else {}
+    _, p = convert.convert(as_bytes(d), convert.Context("vox.daily", YESTERDAY, "f", params=params))
+    assert p.headers["Title"] == title
+    _, p = convert.convert(RAW, convert.Context("vox.daily", YESTERDAY, "f", params=params))
+    assert p.headers["Title"] == "Bird Words"  # a titled puzzle keeps its title
+
+
+def test_cellinfo_without_usable_coordinates_is_skipped():
+    d = amuse()
+    d["cellInfos"] += [
+        {"x": None, "y": 1, "isCircled": True},
+        {"x": "a", "y": 1, "bgColor": "#ccc"},
+        {"y": 3, "rightWall": True},
+    ]
+    _, p = convert.convert(as_bytes(d), convert.Context(LAT, YESTERDAY, "f"))
+    assert p.tricky == []
+    assert p.to_xd() == AMUSE_XD
+
+
 def test_no_author_is_tricky_not_an_error():
     d = amuse()
     d["title"] = d["author"] = d["copyright"] = ""

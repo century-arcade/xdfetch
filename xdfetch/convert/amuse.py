@@ -28,6 +28,8 @@ Outlet conventions come from ctx.params:
   title_drop      text to leave out of the title, such as "(Themeless)"
   copyright=year  write "(c)" and a bare year as "© year", and give a line with no year the
                   puzzle's year
+  date_title=weekday  title an untitled puzzle "Wednesday, October 28, 2026" instead of
+                  "October 28, 2026"
 """
 
 from __future__ import annotations
@@ -88,7 +90,10 @@ def convert(data: bytes, ctx: Context) -> Puzzle:
     if params.get("title_drop"):
         title = plain(title.replace(params["title_drop"], " "))
     if ctx.date and not title:
-        title = date_title(ctx.date)
+        day = ctx.date
+        title = (
+            f"{day:%A}, {day:%B} {day.day}, {day.year}" if params.get("date_title") == "weekday" else date_title(day)
+        )
     p.set("Title", title)
     author, editor = split_author(plain(d.get("author") or ""))
     p.set("Author", normalise_author(author))
@@ -111,7 +116,9 @@ def convert(data: bytes, ctx: Context) -> Puzzle:
     circled: set[tuple[int, int]] = set()
     shaded: set[tuple[int, int]] = set()
     for ci in d.get("cellInfos") or []:
-        x, y = int(ci.get("x", -1)), int(ci.get("y", -1))
+        x, y = ci.get("x"), ci.get("y")
+        if not (isinstance(x, int) and isinstance(y, int)) or isinstance(x, bool) or isinstance(y, bool):
+            continue  # a cellInfo without usable coordinates marks no cell
         is_block = 0 <= x < w and 0 <= y < h and box[x][y] == BLOCK_CELL
         if ci.get("isCircled"):
             circled.add((y, x))
