@@ -6,9 +6,11 @@ params:
          (https://www.nytimes.com/svc/crosswords/v6/puzzle/named/%Y-%m-%d.json)
 
 The registry's `auth` names the environment variable holding a subscriber's NYT-S
-cookie. As of 2026-10 the feed serves complete puzzles without one, so a missing cookie is
-a warning, not an error; the adapter checks that the payload is the date asked for and
-that its cells carry answers, which is where a withdrawn free feed would show.
+cookie, which is sent with each request. If the variable isn't set, the adapter logs a
+warning once and makes the request without the cookie; it doesn't decide beforehand
+whether the fetch can work. Either way the fetch is judged by what comes back: the payload
+must be for the date asked for and its cells must carry answers, and one that isn't or
+doesn't is an error.
 The file is returned exactly as served, named <id>-YYYY-MM-DD.json.
 
 The Times rewrites clues after the day of publication; set `refetch` on the row.
