@@ -21,9 +21,9 @@ classifiers = [
     "Topic :: Games/Entertainment :: Puzzle Games",
 ]
 dependencies = [
+    "lxml>=5.0",
     "requests>=2.32",
-    "tzdata>=2024.1",
-    "xdformat[convert]>=0.2.0",
+    "tzdata>=2024.1; sys_platform == 'win32'",
 ]
 
 [project.urls]
@@ -54,6 +54,7 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "UP", "B", "SIM", "RUF", "PT"]
+ignore = ["RUF001", "RUF003"]  # puzzle text is full of curly quotes, dashes and the like
 
 [tool.ty.environment]
 python-version = "3.11"
@@ -61,6 +62,3 @@ python-version = "3.11"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["--strict-markers"]
-filterwarnings = [
-    "ignore:invalid escape sequence:DeprecationWarning",  # from the ipuz package
-]
