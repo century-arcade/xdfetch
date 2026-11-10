@@ -3,13 +3,16 @@
 Downloads crossword puzzles and converts them to
 [.xd](https://github.com/century-arcade/xdformat), a plain-text crossword format.
 
-**Early days.** It converts puzzle files (see Formats below), from a URL or from disk.
-Downloading by site name is next.
+**Early days.** It fetches puzzles from the outlets it knows (see Outlets below) or from a
+URL, converts puzzle files (see Formats), and can keep an archive of every file it fetches.
 
 ## Use
 
     pip install xdfetch            # or: uv tool install xdfetch
 
+    xdfetch list                                    # the outlets: id, days, homepage
+    xdfetch get nytimes.mini                        # the latest -> nytimes.mini-2026-11-08.xd
+    xdfetch get universal.daily --date 2026-11-02   # -> universal.daily-2026-11-02.xd
     xdfetch get https://example.com/puzzle.puz      # -> puzzle.xd
     xdfetch get https://example.com/puzzle.puz --format both   # also keep puzzle.puz as served
     xdfetch get https://example.com/puzzle.puz --format raw    # only the file as served
@@ -17,10 +20,29 @@ Downloading by site name is next.
     xdfetch convert old.puz -o -                    # to stdout
 
 Output goes in the current directory unless `-o` names a file or a directory. An
-existing file is left alone unless you add `--force`.
+existing file is left alone unless you add `--force`. `get` exits with 3 when the outlet
+has no puzzle for the date. An outlet whose row names an `auth` variable reads its secret
+from that environment variable.
 
 The format is picked by looking at the file, not its extension. Text is written as UTF-8,
 with curly quotes and ellipses made plain ASCII and HTML in clues turned into xd's markup.
+
+### Keeping an archive
+
+    xdfetch run --store ./archive                   # yesterday's puzzles from every enabled outlet
+    xdfetch run --store ./archive --start 2026-10-01 --id universal.daily usatoday.daily
+    xdfetch plan --store ./archive --date today     # what run would fetch
+    xdfetch status --store ./archive                # per outlet: last file, misses, errors
+    xdfetch availability --store ./archive          # when each outlet's file is really up
+    xdfetch verify ./archive/downloads/2026/*.zip   # check archives against their manifests
+
+A store is a directory or `s3://bucket/prefix` (`pip install 'xdfetch[s3]'`); `--store`
+can also come from `XDFETCH_STORE`. It holds `ledger.tsv`, one row per fetch, so a run
+fetches only what's due: new dates, recent misses, and the re-fetches an outlet's `refetch`
+asks for. Each run's files go, as served, into a zip under `downloads/<year>/` with a
+`MANIFEST.tsv` (URL, sha256, fetch time) and a `NOTES.md`; a changed re-fetch is kept beside
+the first copy. `--registry FILE` (repeatable) lays your own outlet rows over xdfetch's on
+any command that reads them.
 
 ## Formats
 
@@ -46,9 +68,8 @@ The series xdfetch knows how to fetch are rows of
 `washingtonpost.sunday`, `arkadium.mini`, `arkadium.two-minute-mini`,
 `brendanemmettquigley.blog`, `dailyprincetonian.daily`, `dailyprincetonian.mini`. Each row
 names the adapter that fetches it, the adapter's parameters, which days it runs, its
-homepage and notes on its files. The column meanings are in `xdfetch/registry.py`.
-
-    python -c "from xdfetch import registry; print(*registry.effective().by_id)"
+homepage and notes on its files. The column meanings are in `xdfetch/registry.py`;
+`xdfetch list` prints them all.
 
 Adapters return each file as the outlet served it; converting is a separate step.
 
