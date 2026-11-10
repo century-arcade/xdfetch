@@ -1,0 +1,100 @@
+name: release
+
+# Pushing a vX.Y.Z tag on master uploads that version to PyPI, then creates
+# the GitHub release with generated notes and the sdist and wheel attached.
+#
+#   1. bump __version__ in xdfetch/__init__.py and merge that to master
+#   2. git tag vX.Y.Z <that commit> && git push origin vX.Y.Z
+#
+# Uploads use PyPI trusted publishing (no API token). One-time setup on
+# pypi.org, by a project owner: Manage project -> Publishing -> add a GitHub
+# publisher with
+#   owner: century-arcade, repository: xdfetch,
+#   workflow: release.yml, environment: pypi
+# GitHub creates the "pypi" environment on the first run if it doesn't
+# exist. A repo admin can add protection rules to it, such as a required
+# reviewer to approve each upload.
+#
+# If a job fails, fix the cause and re-run the workflow: the upload skips
+# files PyPI already has, and the release step updates an existing release.
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # full history, for the on-master check below
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: check that the tag matches the package version
+        run: |
+          version=$(python -c "import xdfetch; print(xdfetch.__version__)")
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "tag $GITHUB_REF_NAME does not match __version__ $version (expected v$version)"
+            exit 1
+          fi
+      - name: check that the tagged commit is on master
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            echo "tag $GITHUB_REF_NAME points at $GITHUB_SHA, which is not on master"
+            exit 1
+          fi
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine check --strict dist/*
+      - name: run the tests against the built wheel
+        run: |
+          pip install "$(ls dist/*.whl)" pytest
+          # run from outside the checkout so the tests import the installed wheel
+          cd "$RUNNER_TEMP"
+          pytest "$GITHUB_WORKSPACE/tests"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/xdfetch
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+
+  github-release:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - name: create the release, or update it on a re-run
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* \
+              --verify-tag --generate-notes \
+              --title "xdfetch ${GITHUB_REF_NAME#v}"
+          fi
