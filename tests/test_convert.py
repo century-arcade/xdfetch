@@ -67,6 +67,7 @@ def test_builtins_are_listed():
     names = [name for name, _, _ in convert.converters()]
     assert names == [
         "uclick",
+        "amuse",
         "nytjson",
         "conde",
         "puzzlr",
