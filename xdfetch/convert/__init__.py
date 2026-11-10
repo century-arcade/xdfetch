@@ -34,6 +34,7 @@ the entry point the first time converters are listed; nothing is loaded at impor
 
 from __future__ import annotations
 
+import contextlib
 import datetime as dt
 import importlib.metadata
 from collections.abc import Callable
@@ -72,7 +73,9 @@ class UnknownFormat(ValueError):
 
 
 class ConvertError(ValueError):
-    pass
+    """The bytes are in a converter's format, but it can't make a puzzle of them."""
+
+    fmt: str | None = None  # the converter's name, set by convert(); see format_of()
 
 
 class PluginError(ConvertError):
@@ -133,6 +136,20 @@ def _sniff(name: str, sniff: Sniff, data: bytes) -> bool:
         raise PluginError(f"converter {name!r}: sniff failed: {type(e).__name__}: {e}") from e
 
 
+def _blame(e: Exception, name: str) -> None:
+    if getattr(e, "fmt", None) is None:
+        with contextlib.suppress(AttributeError, TypeError):  # an exception that takes no attributes
+            setattr(e, "fmt", name)  # noqa: B010
+
+
+def format_of(e: BaseException) -> str | None:
+    """The name of the converter an exception raised by convert() came out of. Converters can
+    fail in ways they don't foresee on a damaged file (a KeyError, say); those exceptions are
+    passed on as they are, with the name attached the same way as to a ConvertError."""
+    fmt = getattr(e, "fmt", None)
+    return fmt if isinstance(fmt, str) else None
+
+
 def detect(data: bytes) -> str:
     """The name of the first converter whose sniff accepts the data."""
     for name, sniff, _ in converters():
@@ -146,7 +163,11 @@ def convert(data: bytes, ctx: Context | None = None, fmt: str | None = None) -> 
     ctx = ctx or Context()
     for name, sniff, fn in converters():
         if (fmt and name == fmt) or (not fmt and _sniff(name, sniff, data)):
-            puzzle = fn(data, ctx)
+            try:
+                puzzle = fn(data, ctx)
+            except Exception as e:
+                _blame(e, name)
+                raise
             if puzzle is not None:
                 return name, puzzle
     raise UnknownFormat(f"no converter for {fmt!r}" if fmt else "no converter recognises this file")

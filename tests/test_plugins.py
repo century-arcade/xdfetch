@@ -164,3 +164,17 @@ def test_cli_reports_a_broken_plugin(plugins, tmp_path, monkeypatch, capsys):
     err = capsys.readouterr().err
     assert "converter plugin 'broken'" in err
     assert "Traceback" not in err
+
+
+def test_errors_name_the_converter_that_failed(plugins, ipuz_bytes, tmp_path, monkeypatch, capsys):
+    """A plugin that passes leaves the failure to the built-in after it, and that is the
+    converter the error names, not the first one whose sniff accepted the file."""
+    plugins(FakeEntryPoint("outlet", ("outlet", ipuz.sniff, lambda data, ctx: None)))
+    broken = ipuz_bytes.replace(b'"Across"', b'"Sideways"').replace(b'"Down"', b'"Up"')
+    with pytest.raises(convert.ConvertError, match="no clues") as e:
+        convert.convert(broken)
+    assert convert.format_of(e.value) == "ipuz"
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "a.ipuz").write_bytes(broken)
+    assert main(["convert", "a.ipuz"]) == FAILED
+    assert "a.ipuz: not a valid ipuz file (no clues)" in capsys.readouterr().err

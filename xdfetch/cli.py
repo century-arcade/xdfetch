@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .convert import Context, ConvertError, PluginError, UnknownFormat, detect
+from .convert import Context, ConvertError, PluginError, UnknownFormat, format_of
 from .convert import convert as convert_puzzle
 from .http import DownloadError, download
 
@@ -22,18 +22,17 @@ OK, FAILED, USAGE = 0, 1, 2
 
 def convert(data: bytes, filename: str) -> str:
     """The .xd text for a puzzle file's bytes, whatever its format (see xdfetch.convert)."""
-    name, fmt = filename or "input", "puzzle"
+    name = filename or "input"
     try:
-        fmt = detect(data)
         _, puzzle = convert_puzzle(data, Context(filename=filename))
     except UnknownFormat as e:
         raise ConvertError(f"{name}: not a puzzle format xdfetch knows") from e
     except PluginError as e:
         raise ConvertError(f"{name}: {e}") from e
     except ConvertError as e:
-        raise ConvertError(f"{name}: not a valid {fmt} file ({e})") from e
+        raise ConvertError(f"{name}: not a valid {format_of(e) or 'puzzle'} file ({e})") from e
     except Exception as e:  # a damaged file can trip a converter in ways it doesn't foresee
-        raise ConvertError(f"{name}: not a valid {fmt} file ({type(e).__name__}: {e})") from e
+        raise ConvertError(f"{name}: not a valid {format_of(e) or 'puzzle'} file ({type(e).__name__}: {e})") from e
     return puzzle.to_xd()
 
 
