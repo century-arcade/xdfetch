@@ -1,0 +1,2 @@
+# byte-for-byte expected output: never convert line endings
+tests/compat/** binary

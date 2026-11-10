@@ -1,0 +1,10 @@
+pubid	date	filename	sha256	bytes	source_url	fetched_at	archive	status	detail	modified
+example.daily	2026-10-27	example.daily/ex261027.xml	e135fea6bbe6f84f3f82453f67f6fad6e3b976b3c2ca917b0f507723284d3e42	27	https://example.com/feed/ex261027.xml	2026-10-29T12:00:00Z	20261029-120000-www.zip	ok		2026-10-26T23:57:44Z
+example.daily	2026-10-28	example.daily/ex261028.xml	0852871e59107fcd022df3e4b6a819b27ca9e0f32b430a39e333ee00b5548cab	29	https://example.com/feed/ex261028.xml	2026-10-29T12:00:00Z	20261029-120000-www.zip	ok		
+example.weekly	2026-10-28					2026-10-29T12:00:00Z		missing	HTTP 404 at https://example.org/w/2026-10-28.puz	
+other.broken	2026-10-27					2026-10-29T12:00:00Z		error	HTTP 403 at https://broken.example.net/20261027.json	
+other.broken	2026-10-28					2026-10-29T12:00:00Z		error	HTTP 403 at https://broken.example.net/20261028.json	
+example.daily	2026-10-28	example.daily/ex261028.v2.xml	54150d39a080df24ad3fa77923219d9eb38fd840c7ce62f78627f32929568418	33	https://example.com/feed/ex261028.xml	2026-10-30T13:00:00Z	20261030-130000-www.zip	changed	was 0852871e5910 in 20261029-120000-www.zip	
+example.weekly	2026-10-28					2026-10-30T13:00:00Z		missing	HTTP 404 at https://example.org/w/2026-10-28.puz	
+other.broken	2026-10-27					2026-10-30T13:00:00Z		error	HTTP 403 at https://broken.example.net/20261027.json	
+other.broken	2026-10-28					2026-10-30T13:00:00Z		error	HTTP 403 at https://broken.example.net/20261028.json	
