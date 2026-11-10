@@ -4,7 +4,8 @@ Downloads crossword puzzles and converts them to
 [.xd](https://github.com/century-arcade/xdformat), a plain-text crossword format.
 
 **Early days.** It fetches puzzles from the outlets it knows (see Outlets below) or from a
-URL, converts puzzle files (see Formats), and can keep an archive of every file it fetches.
+URL, converts puzzle files (see Formats), and can keep an archive of every file it fetches
+(see Keeping an archive).
 
 ## Use
 
@@ -27,7 +28,11 @@ from that environment variable.
 The format is picked by looking at the file, not its extension. Text is written as UTF-8,
 with curly quotes and ellipses made plain ASCII and HTML in clues turned into xd's markup.
 
-### Keeping an archive
+## Keeping an archive
+
+`get` fetches one puzzle. `run` is for fetching many, again and again: run it on a
+schedule and it keeps a growing archive of every outlet's files, exactly as served, and a
+ledger of what it has fetched so the next run doesn't repeat it.
 
     xdfetch run --store ./archive                   # yesterday's puzzles from every enabled outlet
     xdfetch run --store ./archive --start 2026-10-01 --id universal.daily usatoday.daily
@@ -36,13 +41,97 @@ with curly quotes and ellipses made plain ASCII and HTML in clues turned into xd
     xdfetch availability --store ./archive          # when each outlet's file is really up
     xdfetch verify ./archive/downloads/2026/*.zip   # check archives against their manifests
 
-A store is a directory or `s3://bucket/prefix` (`pip install 'xdfetch[s3]'`); `--store`
-can also come from `XDFETCH_STORE`. It holds `ledger.tsv`, one row per fetch, so a run
-fetches only what's due: new dates, recent misses, and the re-fetches an outlet's `refetch`
-asks for. Each run's files go, as served, into a zip under `downloads/<year>/` with a
-`MANIFEST.tsv` (URL, sha256, fetch time) and a `NOTES.md`; a changed re-fetch is kept beside
-the first copy. `--registry FILE` (repeatable) lays your own outlet rows over xdfetch's on
-any command that reads them.
+### The store
+
+`--store` names a directory or `s3://bucket/prefix` (`pip install 'xdfetch[s3]'`); it can
+also come from the `XDFETCH_STORE` environment variable. A run writes three things there:
+
+    ledger.tsv                                   one row per fetch, added to by every run
+    downloads/2026/20261109-070000-www.zip       the files this run fetched (none fetched, no zip)
+    reports/2026/20261109-070000-report.md       this run's report
+
+The archive holds files as the outlet served them, not `.xd`. Unzip one and
+`xdfetch convert` its files when you want `.xd`.
+
+### Which outlets
+
+A run fetches every enabled outlet that `xdfetch list` shows, or only the ones named
+after `--id`. `--registry FILE` (repeatable, on every command but `convert` and `verify`)
+lays a file of your own rows over xdfetch's. It adds outlets, or replaces a built-in row
+that has the same `id`; it does not narrow the run to the outlets in the file. A
+tab-separated file with a header line, with only the columns you need (the columns are
+listed under Outlets below):
+
+    id	adapter	params	days	homepage
+    example.weekly	url	url=https://example.com/puzzles/%Y-%m-%d.puz	sat	https://example.com/
+
+To leave a built-in outlet out of every run, replace its row with a disabled one:
+
+    id	adapter	enabled
+    usatoday.daily	url	no
+
+### Which dates
+
+| Options | Dates |
+|---|---|
+| none | yesterday |
+| `--date D` | that one date |
+| `--start D` | from D to today |
+| `--start D --end E` | from D to E |
+
+A date is `YYYY-MM-DD`, `today` or `yesterday` (UTC). Within the range, an outlet is asked
+only for the days it publishes (`days`, `since`) and only once the day's file should be up
+(`available_after`).
+
+A run looks only at the dates in its range. It does not work out what it missed since the
+last run, so a job that skips a night, or that should retry misses and do re-fetches,
+needs a range that reaches back. For example, with GNU `date`:
+
+    xdfetch run --store ./archive --start "$(date -d '8 days ago' +%F)"
+
+Dates the ledger already has are skipped, so a wide range costs nothing extra.
+
+### What is fetched
+
+For each outlet and date in the range, the ledger decides (`plan` prints the reason):
+
+| Reason | When |
+|---|---|
+| `new` | the ledger has no row for it |
+| `retry` | the last try was `missing` or `error`, and the date is at most 3 days old |
+| `refetch` | the outlet's `refetch` column names days after publication to look again (`1,2,7`), and one is due |
+| `forced` | `--force`: fetch it whatever the ledger says |
+
+`--no-refetch` turns re-fetches off. Each try ends as one of:
+
+| Status | Meaning |
+|---|---|
+| `ok` | first copy of the file, archived |
+| `same` | a re-fetch got identical bytes; nothing new is kept |
+| `changed` | a re-fetch got different bytes; the new file is kept in this run's zip as `name.v2.ext`, and the first copy stays where it was |
+| `missing` | the outlet has nothing for that date (a 404 or an empty page) |
+| `error` | anything else; an outlet that errors 3 times in a row is skipped for the rest of the run |
+
+An archive is never rewritten once stored. Each zip holds the fetched files under their
+outlet's id, a `MANIFEST.tsv` (file name, sha256, size, URL and fetch time of each) and a
+`NOTES.md` saying where each outlet's files came from.
+
+Other options of `run`: `--dry-run` plans without fetching, `--interval SECONDS` sets the
+pause between requests to one host (default 2), and `--summary FILE` writes the report to
+a second place, such as a CI job summary. The report is also printed. `run` exits with 1
+if any fetch ended in `error`; a `missing` is not an error.
+
+### Checking on it
+
+- `status` prints a line per outlet: the date of its last file, how many files, misses
+  and errors the ledger holds, and how many of its most recent dates in a row ended in a
+  miss or an error.
+- `availability` compares each outlet's `available_after` with what the ledger saw (when
+  a file was first found, when it was still missing, and the server's Last-Modified), and
+  says whether the number should be raised or could be lower.
+- `verify ZIP...` checks each zip against its own manifest: every listed file is there
+  with the same sha256 and size, and no file under an outlet's folder is unlisted. It
+  reads only the zips, and exits with 1 if any has a problem.
 
 ## Formats
 
@@ -66,10 +155,31 @@ The series xdfetch knows how to fetch are rows of
 `publisher.series`: `nytimes.daily`, `nytimes.mini`, `nytimes.midi`, `newyorker.daily`,
 `newyorker.mini`, `universal.daily`, `universal.sunday`, `usatoday.daily`,
 `washingtonpost.sunday`, `arkadium.mini`, `arkadium.two-minute-mini`,
-`brendanemmettquigley.blog`, `dailyprincetonian.daily`, `dailyprincetonian.mini`. Each row
-names the adapter that fetches it, the adapter's parameters, which days it runs, its
-homepage and notes on its files. The column meanings are in `xdfetch/registry.py`;
+`brendanemmettquigley.blog`, `dailyprincetonian.daily`, `dailyprincetonian.mini`.
 `xdfetch list` prints them all.
+
+A row's columns, of which only `id` and `adapter` are required:
+
+| Column | Meaning | Blank means |
+|---|---|---|
+| `id` | the series' id | |
+| `adapter` | which adapter fetches it: `url`, `page`, `nyt`, `conde`, `princetonian`, or one a package adds | |
+| `params` | the adapter's parameters, as `key=value` pairs separated by spaces (quote a value that holds spaces) | none |
+| `days` | the days a puzzle runs: `daily`, `mon-sat`, `sun`, `mon,thu` | daily |
+| `since` | the first date to expect a puzzle, `YYYY-MM-DD` | any date |
+| `tz` | the outlet's timezone, an IANA name | `America/New_York` |
+| `available_after` | hours after midnight in `tz` before the day's file is reliably up; negative for the evening before | 0 |
+| `refetch` | days after publication to fetch again and compare, such as `1,2,7` | never |
+| `homepage` | the outlet's own page for the series | |
+| `auth` | the environment variable holding the secret the adapter needs | no secret |
+| `enabled` | `yes` or `no` | yes |
+| `notes` | what the file is, how it's named, quirks of the series | |
+
+Two adapters need no code for a new outlet. `url` fetches a file at a predictable address:
+its `url` param is the address with strftime fields for the date (`%Y-%m-%d`), and an
+optional `filename` param names the file to keep it under. `page` fetches a dated page
+(`page`, also with strftime fields) and then every file it links whose address matches
+the `link` regex.
 
 Adapters return each file as the outlet served it; converting is a separate step.
 
