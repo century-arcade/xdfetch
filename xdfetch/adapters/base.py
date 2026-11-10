@@ -31,6 +31,8 @@ class Target:
     headers: dict[str, str] = field(default_factory=dict)
     cookies: dict[str, str] = field(default_factory=dict)
     note: str = ""  # anything worth recording about this target (the page the id came from, say)
+    companion: bool = False  # a file kept beside the puzzle, not a puzzle itself
+    data: bytes | None = None  # bytes already in hand; fetch() returns them without a request
 
 
 @dataclass
@@ -70,7 +72,9 @@ class Adapter:
 
     def fetch(self, target: Target) -> Fetched:
         """GET the target. Adapters override this when the bytes need unwrapping
-        or more than one request."""
+        or more than one request. A target with its bytes already in hand is returned as is."""
+        if target.data is not None:
+            return Fetched(data=target.data, url=target.url, filename=target.filename)
         r = self.http.get(
             target.url, headers=target.headers or None, cookies=target.cookies or None, interval=self.interval
         )

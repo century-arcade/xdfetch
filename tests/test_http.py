@@ -150,3 +150,42 @@ def test_iso_http_date():
     assert iso_http_date("Wed, 28 Oct 2026 07:30:00 GMT") == "2026-10-28T07:30:00Z"
     assert iso_http_date("Wed, 28 Oct 2026 03:30:00 -0400") == "2026-10-28T07:30:00Z"
     assert iso_http_date("") == iso_http_date(None) == iso_http_date("not a date") == ""
+
+
+# --- post ---
+
+
+@responses.activate
+def test_post_sends_json_and_retries(http):
+    responses.add(responses.POST, "https://example.test/api", status=503)
+    responses.add(responses.POST, "https://example.test/api", json={"ok": True})
+    r = http.post("https://example.test/api", json={"query": "q"}, headers={"X-Test": "1"})
+    assert r.json() == {"ok": True}
+    assert len(responses.calls) == 2
+    assert responses.calls[1].request.body == b'{"query": "q"}'
+    assert responses.calls[1].request.headers["X-Test"] == "1"
+    assert responses.calls[1].request.headers["User-Agent"] == USER_AGENT
+
+
+@responses.activate
+def test_post_404_is_not_found(http):
+    responses.add(responses.POST, "https://example.test/api", status=404)
+    with pytest.raises(NotFound):
+        http.post("https://example.test/api", json={})
+
+
+@responses.activate
+def test_post_empty_body_is_not_found(http):
+    responses.add(responses.POST, "https://example.test/api", body=b"")
+    with pytest.raises(NotFound, match="empty"):
+        http.post("https://example.test/api", data=b"x")
+
+
+@responses.activate
+def test_post_gives_up(http):
+    for _ in range(5):
+        responses.add(responses.POST, "https://example.test/api", status=500)
+    with pytest.raises(FetchError) as e:
+        http.post("https://example.test/api", json={})
+    assert e.value.status == 500
+    assert len(responses.calls) == 3

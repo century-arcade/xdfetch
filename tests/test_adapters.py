@@ -50,6 +50,16 @@ def test_ids_from_another_registry_are_used_as_given(tmp_path, http):
     assert filename("odd") == "odd2026-10-28"  # a URL with no file name of its own
 
 
+@responses.activate
+def test_fetch_returns_bytes_in_hand_without_a_request(registry, http):
+    a = adapters.get("url")(registry["universal.daily"], http)
+    t = Target(url="https://example.test/listing#7", filename="meta/7.json", companion=True, data=b'{"id": 7}')
+    got = a.fetch(t)
+    assert (got.data, got.url, got.filename) == (b'{"id": 7}', "https://example.test/listing#7", "meta/7.json")
+    assert len(responses.calls) == 0
+    assert Target(url="u", filename="f").companion is False
+
+
 def test_builtins():
     assert set(adapters.ADAPTERS) == {"url", "nyt", "conde", "page", "princetonian"}
     assert adapters.get("url") is adapters.ADAPTERS["url"]

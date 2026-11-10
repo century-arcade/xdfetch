@@ -149,6 +149,41 @@ class Http:
                 raise NotFound("empty response", status=r.status_code, url=url)
             return r
 
+    def post(
+        self,
+        url: str,
+        *,
+        json: dict | None = None,
+        data: bytes | None = None,
+        headers: dict[str, str] | None = None,
+        interval: float | None = None,
+    ) -> requests.Response:
+        """POST with the same rate limiting and retries as get(). Raises NotFound on 404/410
+        or an empty body, FetchError otherwise."""
+        s = self.session(url)
+        attempt = 0
+        while True:
+            attempt += 1
+            self._wait(url, interval)
+            self.requests_made += 1
+            try:
+                r = s.post(url, json=json, data=data, headers=headers, timeout=self.timeout)
+            except requests.RequestException as e:
+                if attempt > self.retries:
+                    raise FetchError(f"{e.__class__.__name__}: {e}", url=url) from e
+                self._backoff(attempt, None)
+                continue
+            if r.status_code in (404, 410):
+                raise NotFound(f"HTTP {r.status_code}", status=r.status_code, url=url)
+            if r.status_code in RETRY_STATUSES and attempt <= self.retries:
+                self._backoff(attempt, r.headers.get("Retry-After"))
+                continue
+            if r.status_code >= 400:
+                raise FetchError(f"HTTP {r.status_code}", status=r.status_code, url=url)
+            if not r.content:
+                raise NotFound("empty response", status=r.status_code, url=url)
+            return r
+
     def _backoff(self, attempt: int, retry_after: str | None) -> None:
         delay = 2.0**attempt
         if retry_after:
