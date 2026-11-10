@@ -84,9 +84,6 @@ PUBLIC_IDS = [
     "wsj.daily",
     "bostonglobe.sunday",
     "bostonglobe.mini",
-    "puzzmo.daily",
-    "puzzmo.mini",
-    "puzzmo.big",
 ]
 
 

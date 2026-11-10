@@ -287,7 +287,7 @@ def test_date_not_in_queue_is_a_miss(registry, http):
 
 @responses.activate
 def test_queue_and_graphql_errors(registry, http):
-    responses.add(responses.GET, LIST, json={"errors": ["FORBIDDEN_TEAM"]})
+    responses.add(responses.GET, LIST, json={"errors": ["no"]})
     a = adapter.PuzzmoAdapter(registry["bostonglobe.sunday"], http)
     with pytest.raises(FetchError, match="queue list is not as expected"):
         a.targets(SUNDAY)
@@ -318,75 +318,6 @@ def test_team_registry_rows(registry):
     assert mini.params == {"team": "boston-globe-amlaj", "queue": "crossword-mini"}
     assert mini.days == frozenset(range(7))
     assert mini.since == dt.date(2026, 6, 1)
-
-
-# --- Puzzmo's own series, by date ---
-
-
-def test_own_series_registry_rows(registry):
-    assert registry["puzzmo.daily"].params == {"finder": "crossword"}
-    assert registry["puzzmo.daily"].since == dt.date(2023, 10, 16)
-    assert registry["puzzmo.mini"].params == {"finder": "crossword/mini"}
-    assert registry["puzzmo.mini"].since == dt.date(2025, 10, 1)
-    assert registry["puzzmo.big"].params == {"finder": "crossword/big"}
-    assert registry["puzzmo.big"].days == frozenset({0})
-
-
-@responses.activate
-def test_gameplay_by_date(registry, http):
-    responses.add(responses.POST, adapter.PLAY, body=DAILY)
-    a = adapter.PuzzmoAdapter(registry["puzzmo.mini"], http)
-    (t,) = a.targets(NOV9)
-    assert t.filename == "puzzmo.mini-2026-11-09.json"
-    assert t.url == adapter.PLAY
-    assert a.fetch(t).data == DAILY
-    req = responses.calls[0].request
-    sent = posted(req)
-    assert sent["variables"]["finderKey"] == "today:/2026-11-09/crossword/mini"
-    assert "startOrFindGameplay" in sent["query"]
-    assert req.headers["Puzzmo-Gameplay-Id"]
-    assert "startOrFindGameplay" in a.describe()
-
-
-@responses.activate
-def test_gameplay_id_is_one_per_run(registry, http):
-    responses.add(responses.POST, adapter.PLAY, body=DAILY)
-    a = adapter.PuzzmoAdapter(registry["puzzmo.daily"], http)
-    for day in (NOV9, NOV9 - dt.timedelta(days=1)):
-        a.fetch(a.targets(day)[0])
-    ids = {c.request.headers["Puzzmo-Gameplay-Id"] for c in responses.calls}
-    assert len(ids) == 1
-    assert adapter.PuzzmoAdapter(registry["puzzmo.daily"], http)._gameplay_id not in ids
-
-
-@responses.activate
-def test_gameplay_no_puzzle_is_a_miss(registry, http):
-    answer = {"data": {"startOrFindGameplay": {"__typename": "ErrorableResponse", "message": "No puzzle found"}}}
-    responses.add(responses.POST, adapter.PLAY, json=answer)
-    a = adapter.PuzzmoAdapter(registry["puzzmo.big"], http)
-    (t,) = a.targets(NOV9)
-    with pytest.raises(NotFound, match="today:/2026-11-09/crossword/big"):
-        a.fetch(t)
-
-
-@responses.activate
-def test_gameplay_other_errors(registry, http):
-    a = adapter.PuzzmoAdapter(registry["puzzmo.daily"], http)
-    (t,) = a.targets(NOV9)
-    answer = {"data": {"startOrFindGameplay": {"__typename": "ErrorableResponse", "message": "Slow down"}}}
-    responses.add(responses.POST, adapter.PLAY, json=answer)
-    with pytest.raises(FetchError, match="Slow down"):
-        a.fetch(t)
-    responses.replace(responses.POST, adapter.PLAY, json={"errors": [{"message": "bad"}], "data": None})
-    with pytest.raises(FetchError, match="bad"):
-        a.fetch(t)
-    responses.replace(responses.POST, adapter.PLAY, body="<html>")
-    with pytest.raises(FetchError, match="not JSON"):
-        a.fetch(t)
-    empty = {"data": {"startOrFindGameplay": {"__typename": "HasGamePlayed", "gamePlayed": {"puzzle": {}}}}}
-    responses.replace(responses.POST, adapter.PLAY, json=empty)
-    with pytest.raises(FetchError, match="no puzzle text"):
-        a.fetch(t)
 
 
 # --- the converter: a team queue's answer ---
