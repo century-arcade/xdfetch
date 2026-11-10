@@ -5,25 +5,26 @@ Fetches crossword puzzles from the outlets that publish them online and converts
 [xd corpus](https://github.com/century-arcade/xd).
 
 **Status: just started.** The package installs and the command runs, but it can't fetch
-anything yet. [DESIGN.md](DESIGN.md) has the plan.
+anything yet. [DESIGN.md](DESIGN.md) has the design and [docs/plan-0.1.0.md](docs/plan-0.1.0.md) the plan for the first release.
 
 ## What it will do
 
     pip install xdfetch
-    xdfetch list                        # the outlets it knows
+    xdfetch list                        # the sites the installed plugins know
     xdfetch get lat                     # today's LA Times -> lat2026-11-09.xd
-    xdfetch get nyt --date 2026-11-01   # with your own subscription cookie in NYT_S
-    xdfetch run --store ./archive --start 2026-10-01 --end 2026-10-31   # keep an archive
+    xdfetch get nyt --date 2026-11-01   # with your own subscription cookie in the config
+    xdfetch get https://example.com/puzzle.puz
+    xdfetch convert old-puzzle.puz      # a local .puz, .ipuz or .jpz -> .xd
 
 Three rules shape it:
 
-1. **Fetch keeps the bytes as served.** The file the outlet sent is kept as it was, and
+1. **Fetch keeps the bytes as served.** The file the site sent is kept as it was, and
    conversion reads from that.
-2. **Convert is separate:** one converter per *format*, not per outlet, chosen by looking
+2. **Convert is separate:** one converter per *format*, not per site, chosen by looking
    at the content. Anything a source has that .xd can't carry is reported, never dropped
    silently.
-3. **Most outlets are a row, not code.** `outlets.tsv` says where each outlet's file is and
-   when it publishes; code is only needed for a new kind of host.
+3. **Downloaders are plugins.** Each site is a small source class in an installed package,
+   so sites can be added (or kept private) without changing xdfetch.
 
 ## Development
 
