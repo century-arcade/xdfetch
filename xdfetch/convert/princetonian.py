@@ -12,9 +12,8 @@ There is no grid in the data: it is drawn from the clues, each answer laid from 
 letter in an answer is a circled square (Special: circle, lowercase in the grid). Numbers
 aren't in the data either; they are standard numbering of the grid that results.
 
-Headers follow the gxd corpus's Daily Princetonian puzzles: Title, Author (the constructors in
-the record's order, "A, B and C"), Date. The record's description ("Difficulty Level: 5/5")
-is not carried, as in the corpus.
+Headers: Title, Author (the constructors in the record's order, "A, B and C"), Date. The
+record's description ("Difficulty Level: 5/5") is not carried.
 
 A person has to look (a review note) when the two answers through a square disagree, an
 answer holds something other than a letter or digit, a clue doesn't start where a numbered

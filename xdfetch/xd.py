@@ -1,9 +1,21 @@
 """A puzzle, and how it's written as .xd.
 
-Converters build a Puzzle; this module writes it. The typography follows the conventions
-of the gxd corpus: UTF-8; curly quotes, ellipses and no-break spaces flattened to ASCII;
-whitespace collapsed; accents and em dashes kept; markup only in clues as {/i/}, {*b*},
-{_u_}, {-s-}, {^sup^}, {~sub~}. The result passes xdlint.
+Converters build a Puzzle; this module writes it in xdfetch's house style, which follows
+the conventions of the public xd corpus (https://xd.saul.pw):
+
+- UTF-8; curly quotes, ellipses and no-break spaces flattened to ASCII; whitespace
+  collapsed; accents and em dashes kept; mojibake repaired as xd's own tools repair it.
+- Markup only in clues, as {/i/}, {*b*}, {_u_}, {-s-}, {^sup^}, {~sub~}.
+- Headers in the order Title, Author, Editor, Copyright, Number, Date, Relation, Special,
+  Rebus, Cluegroup, Description, Notes, then any others; empty ones left out.
+- Circled squares as lowercase letters with `Special: circle` (shaded: `Special: shaded`).
+- Rebus keys handed out as xd's puz2xd does (1234567890*?@$%&+ and on); a circled rebus
+  square takes a lowercase letter key.
+- Where an outlet's titles say nothing (the `title=date` param), the title is the date,
+  written "October 9, 2026" (date_title() in xdfetch.convert.ccxml).
+- A clue with no text is written [XXX]; a file without notes ends with a blank line.
+
+The result passes xdlint.
 """
 
 from __future__ import annotations
@@ -16,7 +28,7 @@ from dataclasses import dataclass, field
 BLOCK = "#"
 GRID_CHARS = re.compile(r"[^A-Za-z0-9#._]")  # what xdlint (XD002) accepts in a grid row, plus declared rebus keys
 # Keys for rebus squares that aren't circled, in the order they're handed out: xd's puz2xd
-# order, which the gxd corpus follows (some puzzles have over 30). Circled rebus squares take
+# order (some puzzles need over 30). Circled rebus squares take
 # lowercase letters instead. Any single printable character is a valid key (spec: "digits,
 # most symbols, and printable unicode characters"); xdlint accepts whatever the header declares.
 REBUS_KEYS = "1234567890*?@$%&+♠♥♦♣⚀⚁⚂⚃⚄⚅♟♞♝♜♛♚⅕⅖⅗⅘♳♴♵♶♷♸♹☿♀♁♂♃♄⛢♆♇⚳⚷"
@@ -76,7 +88,8 @@ TAG = re.compile(r"<[^>]+>")
 
 # Mojibake repair, ported from xd's xdfile/utils.py (clean_latin1_utf8_mojibake,
 # clean_c1_controls) and the first steps of xdfile/puz2xd.py decode(), which is what every
-# .puz-born file in gxd went through; xd/doc/character-encoding.md explains each pass.
+# .puz file in the xd corpus went through; doc/character-encoding.md in
+# https://github.com/century-arcade/xd explains each pass.
 # Keep in lockstep with those: a change there is a change here.
 _C1_RE = re.compile(r"[\x80-\x9f]")
 _UTF8_TRAILER_RE = re.compile(r"â?\x80[\x80-\x9f]")
@@ -141,7 +154,7 @@ def repair(text: str) -> str:
 
 def plain(text: str) -> str:
     """Header/notes text: entities decoded, mojibake repaired, typography flattened,
-    whitespace collapsed (gxd's EDITORIAL.md; xdlint XD009, XD010, XD208)."""
+    whitespace collapsed (house style; xdlint XD009, XD010, XD208)."""
     text = repair(html.unescape(text))
     text = unicodedata.normalize("NFC", text).translate(FLAT)
     return re.sub(r"\s+", " ", text).strip()
@@ -226,7 +239,7 @@ class Puzzle:
             out.append("")
             out.append(self.notes.strip())
             return "\n".join(out) + "\n"
-        # xd's own writer ends a file without notes with a blank line; the gxd corpus does too
+        # xd's own writer ends a file without notes with a blank line; so does the house style
         return "\n".join(out) + "\n\n"
 
     def check(self) -> list[str]:

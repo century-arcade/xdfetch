@@ -26,13 +26,12 @@ a JSON record whose `data` is the puzzle as xd-like text:
 
     ## Help, ## Pause Message, ## End Message   (player chrome)
 
-Conventions, as the gxd corpus's New Yorker puzzles have them: the title keeps
-the series prefix ("The Crossword: Wednesday, October 28, 2026") and gets " - <theme>" when
-the subtitle names one; the Mini's title is the bare date. Circles are lowercase letters
-with Special: circle; any other styled square is shading. Rebus keys are reassigned in
-puz2xd's order. Clue text already uses xd markup; entities are decoded and typography
-flattened. Refs are dropped; Help text is listed as tricky, since once in a while it is part
-of the puzzle.
+Conventions: the title keeps the series prefix ("The Crossword: Wednesday, October 28,
+2026") and gets " - <theme>" when the subtitle names one; the Mini's title is the bare
+date. Circles are lowercase letters with Special: circle; any other styled square is
+shading. Rebus keys are reassigned in puz2xd's order. Clue text already uses xd markup;
+entities are decoded and typography flattened. Refs are dropped; Help text is listed as
+tricky, since once in a while it is part of the puzzle.
 """
 
 from __future__ import annotations

@@ -133,7 +133,7 @@ def span(s: str) -> range:
     return range(int(a), int(b or a) + 1)
 
 
-def gxd_date_title(d: dt.date) -> str:
+def date_title(d: dt.date) -> str:
     return f"{d:%B} {d.day}, {d.year}"
 
 
@@ -220,7 +220,7 @@ def build(doc: dict, ctx: Context) -> Puzzle:
         p.tricky.append(f"the feed dates this puzzle {record['date']}, filed as {day}")
     title = plain(meta.get("title", ""))
     if params.get("title") == "date" or not title:
-        title = gxd_date_title(day) if day else title
+        title = date_title(day) if day else title
     p.set("Title", title)
     author = re.sub(r"^.*?\bby\s+", "", plain(meta.get("creator", "")), flags=re.I)
     p.set("Author", author)

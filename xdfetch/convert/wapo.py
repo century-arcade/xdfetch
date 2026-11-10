@@ -7,9 +7,8 @@ https://games-service-prod.site.aws.wapo.pub/crossword/levels/sunday/YYYY/MM/DD:
      "words": [{"clue": "Male duck", "direction": "across", "indexes": [0, 1, 2]}, ...]}
 
 Cells are row-major; a locked cell is a block. Circled letters are lowercase with Special:
-circle; a multi-letter answer is a rebus square. The copyright line is kept as served (gxd's
-wapost shelf has it that way), the description goes in the notes, and the puzzleId's date is
-checked against the file's.
+circle; a multi-letter answer is a rebus square. The copyright line is kept as served, the
+description goes in the notes, and the puzzleId's date is checked against the file's.
 """
 
 from __future__ import annotations

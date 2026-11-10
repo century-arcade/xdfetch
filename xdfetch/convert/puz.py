@@ -22,7 +22,7 @@ import struct
 
 from ..xd import BLOCK, REBUS_KEYS, Clue, Puzzle, clue_text, number_grid, plain
 from . import Context, ConvertError
-from .ccxml import gxd_date_title
+from .ccxml import date_title
 
 MAGIC = b"ACROSS&DOWN\0"
 
@@ -103,8 +103,8 @@ def convert(data: bytes, ctx: Context) -> Puzzle:
     p.grid = ["".join(r) for r in grid]
 
     if ctx.params.get("title") == "date" and ctx.date:
-        title = gxd_date_title(ctx.date)
-    p.set("Title", title or (gxd_date_title(ctx.date) if ctx.date else ""))
+        title = date_title(ctx.date)
+    p.set("Title", title or (date_title(ctx.date) if ctx.date else ""))
     p.set("Author", author)
     p.set("Copyright", copyright_)
     if ctx.date:

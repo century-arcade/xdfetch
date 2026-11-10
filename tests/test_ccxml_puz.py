@@ -40,6 +40,53 @@ def test_ccxml_fixture():
     assert p.to_xd() == CCXML_XD
 
 
+def test_house_style_end_to_end_with_a_date_title():
+    """The whole house style on one date-titled puzzle (`title=date`): the title is the date,
+    typography flattened, mojibake repaired, HTML turned into xd markup, the copyright mark
+    spaced, a circle lowercase, a rebus keyed, a missing clue written [XXX], notes last."""
+    raw = CCXML.decode()
+    for old, new in [
+        ("<title>Mini Crossword</title>", "<title>Batch 7</title>"),
+        ("<creator>Ann Setter</creator>", "<creator>Puzzle by Ann&#160;Setter</creator>"),
+        ("<copyright>©Arkadium</copyright>", "<copyright>©2026  Arkadium</copyright>"),
+        ("<description></description>", "<description>A note…  with\nspaces</description>"),
+        ('<cell x="2" y="1" solution="H"', '<cell x="2" y="1" solution="H" background-shape="circle"'),
+        ('<cell x="4" y="1" solution="P"', '<cell x="4" y="1" solution="PS"'),
+        (">Small jump<", "><b>Small</b>&#160;jump<"),
+        (">Herb <i>sometimes</i> dried<", ">Herb<i> </i>“sage”<"),
+        (">Mash<", ">Mash cafÃ©<"),
+        (">“Drag” a trailer’s load<", "><sup>2</sup>nd drag<"),
+        ('<clue word="3" number="2" format="4">Eye</clue>', ""),
+    ]:
+        assert old in raw, old
+        raw = raw.replace(old, new)
+    _, p = convert.convert(raw.encode(), ctx())
+    assert p.review == ["D2: no clue in the file"]
+    assert p.check() == []
+    assert p.to_xd() == (
+        "Title: October 9, 2026\n"
+        "Author: Ann Setter\n"
+        "Copyright: © 2026 Arkadium\n"
+        "Date: 2026-10-09\n"
+        "Special: circle\n"
+        "Rebus: 1=PS\n"
+        "\n\n"
+        "#hO1\nSAGE\nPULP\nALE#\n"
+        "\n\n"
+        "A1. {*Small*} jump ~ HOPS\n"
+        'A4. Herb "sage" ~ SAGE\n'
+        "A5. Mash café ~ PULP\n"
+        "A6. Pub pour ~ ALE\n"
+        "\n"
+        "D1. {^2^}nd drag ~ HAUL\n"
+        "D2. [XXX] ~ OGLE\n"
+        "D3. Energy... ~ PSEP\n"
+        "D4. Resort ~ SPA\n"
+        "\n\n"
+        "A note... with spaces\n"
+    )
+
+
 def test_ccxml_title_without_the_date_param():
     _, p = convert.convert(CCXML, ctx(params={}))
     assert p.headers["Title"] == "Mini Crossword"

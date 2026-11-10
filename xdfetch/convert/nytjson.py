@@ -9,11 +9,10 @@
                           "text": [{"plain": ..., "formatted": ...}]}],
                "overlays": {...}}]}
 
-Cell type 1 is plain, 2 circled, 3 shaded. The conventions are those of the gxd corpus's
-New York Times puzzles:
+Cell type 1 is plain, 2 circled, 3 shaded. Conventions:
 
 - Title is the Times's where it has one (Sundays), else the weekday and date with the
-  day zero-padded ("Thursday, January 01, 2026"), as gxd's earlier years have it.
+  day zero-padded ("Thursday, January 01, 2026").
 - Author joins constructors with "and"; Editor; Copyright is "© <year>, The New York Times".
 - Clue text is `formatted` where there is one (italics, bold, superscripts as xd markup),
   else `plain`; a picture clue becomes its description in brackets.
@@ -149,7 +148,7 @@ def convert(data: bytes, ctx: Context) -> Puzzle:
     lower_keys = [k for k in string.ascii_lowercase if k not in used_lower]
     rebus: dict[tuple[str, bool], str] = {}  # (value, marked) -> key
     values = [(value(c), marked(c)) for c in cells if is_open(c) and is_rebus(c)]
-    for v, m in values:  # a digit is its own key (gxd: 2=2)
+    for v, m in values:  # a digit is its own key (2=2)
         if re.fullmatch(r"\d", v) and not m and v not in rebus.values():
             rebus[(v, m)] = v
     plain_keys = [k for k in REBUS_KEYS if k not in rebus.values()]
@@ -245,7 +244,7 @@ def convert(data: bytes, ctx: Context) -> Puzzle:
     day = dt.date.fromisoformat(d) if d else ctx.date
     title = tidy(p.get("title") or "")
     if not title and day:
-        title = f"{day:%A}, {day:%B %d, %Y}"  # gxd's NYT zero-pads the day
+        title = f"{day:%A}, {day:%B %d, %Y}"  # the day zero-padded, as the house style has it for the NYT
     puz.set("Title", title)
     puz.set("Author", " and ".join(tidy(a) for a in p.get("constructors") or []))
     puz.set("Editor", p.get("editor") or "")
