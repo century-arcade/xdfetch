@@ -78,6 +78,15 @@ PUBLIC_IDS = [
     "vulture.daily",
     "walrus.weekly",
     "defector.weekly",
+    "kingfeatures.thomas-joseph",
+    "kingfeatures.eugene-sheffer",
+    "kingfeatures.premier-sunday",
+    "wsj.daily",
+    "bostonglobe.sunday",
+    "bostonglobe.mini",
+    "puzzmo.daily",
+    "puzzmo.mini",
+    "puzzmo.big",
 ]
 
 

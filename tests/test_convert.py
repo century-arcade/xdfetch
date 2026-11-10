@@ -65,7 +65,20 @@ def test_context_is_optional(puz_bytes):
 
 def test_builtins_are_listed():
     names = [name for name, _, _ in convert.converters()]
-    assert names == ["uclick", "amuse", "nytjson", "conde", "wapo", "princetonian", "ipuz", "ccxml", "puz"]
+    assert names == [
+        "uclick",
+        "amuse",
+        "nytjson",
+        "conde",
+        "puzzlr",
+        "wapo",
+        "princetonian",
+        "ipuz",
+        "puzzmo",
+        "ccxml",
+        "ccjson",
+        "puz",
+    ]
 
 
 # --- uclick ---

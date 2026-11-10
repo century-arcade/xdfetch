@@ -20,18 +20,29 @@ nothing and is dropped. A numbered slot the file gives no clue is written `[XXX]
 review, naming any clue that ends with that slot's number (where a dropped clue's number
 can end up).
 
-Conversion is in two steps, so that a converter plugin can bring the same document in
-another wire format (a JSON rendering of it, say): read() makes a plain dict of the XML,
-and build() makes the Puzzle from that dict. The dict's keys are documented on build().
+Conversion is in two steps, so that the same document can come in another wire format:
+read() makes a plain dict of the XML, and build() makes the Puzzle from that dict. The dict's
+keys are documented on build(). xdfetch.convert.ccjson reads the JSON form King Features'
+puzzles come in into the same dict.
 
 Outlet conventions come from ctx.params:
 
   title      `date`: the title is the date ("October 9, 2026"), for feeds whose titles are the
              game's name or a batch number (Arkadium). Otherwise the file's title, or the date
              when it has none.
+  author     a fixed byline, for files whose creator names only the feature ("Thomas Joseph
+             Crossword"). Otherwise the file's creator, with a feature name before " by "
+             removed ("Sunday Crossword by A. Setter").
+  dash       text to write for an em dash in a clue (`--`).
+  endash     text to write for an en dash in a clue (`-`).
+  quotes     `repair`: a space after a clue's opening quote mark is removed ('" -- Kapital'),
+             and a clue with an odd number of double quotes is listed as tricky: King
+             Features' files drop closing marks and cut clues short ('"Auld Lang'), which
+             takes a person to mend.
 
-The author is the file's creator, with a feature name before " by " removed
-("Sunday Crossword by A. Setter").
+Not done: King Features' data keeps the hyphen that broke a word for a newspaper column
+("Appor-tions"), a few clues a year. Telling one from a real compound ("lead-in",
+"Swiss-born", far more common) takes a person, so they are kept as they are.
 """
 
 from __future__ import annotations
@@ -137,6 +148,15 @@ def date_title(d: dt.date) -> str:
     return f"{d:%B} {d.day}, {d.year}"
 
 
+def dashes(text: str, dash: str | None, endash: str | None) -> str:
+    """Em and en dashes written as the outlet's params say (`dash`, `endash`)."""
+    if dash:
+        text = text.replace("—", dash)
+    if endash:
+        text = text.replace("–", endash)
+    return text
+
+
 def convert(data: bytes, ctx: Context) -> Puzzle:
     return build(read(data), ctx)
 
@@ -222,7 +242,7 @@ def build(doc: dict, ctx: Context) -> Puzzle:
     if params.get("title") == "date" or not title:
         title = date_title(day) if day else title
     p.set("Title", title)
-    author = re.sub(r"^.*?\bby\s+", "", plain(meta.get("creator", "")), flags=re.I)
+    author = params.get("author") or re.sub(r"^.*?\bby\s+", "", plain(meta.get("creator", "")), flags=re.I)
     p.set("Author", author)
     p.set("Copyright", re.sub(r"^©\s*", "© ", plain(meta.get("copyright", ""))))
     if day:
@@ -255,7 +275,12 @@ def build(doc: dict, ctx: Context) -> Puzzle:
             slot = numbering.get((direction, number))
             if slot is None or slot != (path[0][1] - 1, path[0][0] - 1):
                 p.needs_review(f"{direction}{number}: the file's numbering differs from the grid's")
-            p.clues.append(Clue(direction, number, clue_text(raw), answer))
+            text = clue_text(dashes(raw, params.get("dash"), params.get("endash")))
+            if params.get("quotes") == "repair":
+                text = re.sub(r'^" (?=\S)', '"', text)  # a space inside the opening mark ('" -- Kapital')
+                if text.count('"') % 2:
+                    p.tricky.append(f"{direction}{number}: unbalanced quotation marks: {text}")
+            p.clues.append(Clue(direction, number, text, answer))
             seen.add((direction, number))
     if not p.clues:
         raise ConvertError("no clues")

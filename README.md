@@ -146,6 +146,9 @@ if any fetch ended in `error`; a `missing` is not an error.
 | Washington Post games JSON | The Washington Post |
 | Daily Princetonian crossword API | The Daily Princetonian |
 | Amuse Labs (PuzzleMe) puzzle JSON, unscrambled from the player page | the LA Times, the Atlantic, Newsday, Vox, many others |
+| Crossword Compiler as JSON (xml2js) | King Features, on GameDistribution's feeds |
+| PZLR crossword level | The Wall Street Journal |
+| Puzzmo's xd dialect, in its GraphQL answers | Puzzmo, the Boston Globe |
 
 Other packages can add formats; see "Adding to xdfetch from another package" below.
 
@@ -159,7 +162,9 @@ The series xdfetch knows how to fetch are rows of
 `brendanemmettquigley.blog`, `dailyprincetonian.daily`, `dailyprincetonian.mini`,
 `latimes.daily`, `latimes.midi`, `atlantic.daily`, `newsday.daily`, `dailybeast.daily`,
 `crosswordclub.daily`, `crosswordclub.themed`, `vox.daily`, `vulture.daily`,
-`walrus.weekly`, `defector.weekly`.
+`walrus.weekly`, `defector.weekly`, `kingfeatures.thomas-joseph`,
+`kingfeatures.eugene-sheffer`, `kingfeatures.premier-sunday`, `wsj.daily`,
+`bostonglobe.sunday`, `bostonglobe.mini`, `puzzmo.daily`, `puzzmo.mini`, `puzzmo.big`.
 `xdfetch list` prints them all.
 
 A row's columns, of which only `id` and `adapter` are required:
@@ -167,7 +172,7 @@ A row's columns, of which only `id` and `adapter` are required:
 | Column | Meaning | Blank means |
 |---|---|---|
 | `id` | the series' id | |
-| `adapter` | which adapter fetches it: `url`, `page`, `nyt`, `conde`, `princetonian`, `amuse`, or one a package adds | |
+| `adapter` | which adapter fetches it: `url`, `page`, `nyt`, `conde`, `princetonian`, `amuse`, `gamedist`, `puzzlr`, `puzzmo`, or one a package adds | |
 | `params` | the adapter's parameters, as `key=value` pairs separated by spaces (quote a value that holds spaces) | none |
 | `days` | the days a puzzle runs: `daily`, `mon-sat`, `sun`, `mon,thu` | daily |
 | `since` | the first date to expect a puzzle, `YYYY-MM-DD` | any date |
@@ -193,6 +198,18 @@ one is missing); else from the player's date picker, which lists only recent puz
 Its converter reads `editor`, `title_drop`, `copyright=year`, `publish_offset` and
 `date_title=weekday` from the
 row too; `xdfetch/adapters/amuse.py` and `xdfetch/convert/amuse.py` describe them all.
+
+Three more fetch from platforms that also carry several outlets' puzzles:
+
+- `gamedist`, GameDistribution's crossword feeds (King Features' puzzles): `feed` is the
+  feed's slug. The rows also set how the puzzle is written: `author` (a fixed byline),
+  `dash` and `endash` (what to write for an em or en dash in a clue) and `quotes=repair`
+  (a space after a clue's opening quote mark removed, unbalanced quote marks noted).
+- `puzzlr`, PZLR: `tenant` is the publisher's slug, and `offset` the days added to the
+  date asked for to get the date PZLR files the puzzle under. `copyright` is written when
+  the puzzle carries none.
+- `puzzmo`, Puzzmo: `team` and `queue` name a publisher's queue, or `finder` names one of
+  Puzzmo's own series (`crossword`, `crossword/mini`, `crossword/big`).
 
 Adapters return each file as the outlet served it; converting is a separate step.
 

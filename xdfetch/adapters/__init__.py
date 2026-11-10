@@ -18,9 +18,12 @@ from importlib import metadata
 from .amuse import AmuseAdapter
 from .base import Adapter, Fetched, MissingSecret, Target
 from .conde import CondeAdapter
+from .gamedist import GameDistAdapter
 from .nyt import NytAdapter
 from .page import PageAdapter
 from .princetonian import PrincetonianAdapter
+from .puzzlr import PuzzlrAdapter
+from .puzzmo import PuzzmoAdapter
 from .url import UrlAdapter
 
 ENTRY_POINT_GROUP = "xdfetch.adapters"
@@ -32,6 +35,9 @@ ADAPTERS: dict[str, type[Adapter]] = {
     PageAdapter.name: PageAdapter,
     PrincetonianAdapter.name: PrincetonianAdapter,
     AmuseAdapter.name: AmuseAdapter,
+    GameDistAdapter.name: GameDistAdapter,
+    PuzzlrAdapter.name: PuzzlrAdapter,
+    PuzzmoAdapter.name: PuzzmoAdapter,
 }
 
 
