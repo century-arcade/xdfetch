@@ -20,6 +20,7 @@ FOUR, a 4x4 with blocks in two corners:
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import struct
 
@@ -321,6 +322,66 @@ Rebus: 1=RS
 
 """
     + FIVE_XD_GRID_AND_CLUES.replace('{/Male/} duck, with "quotes"', '"Male" duck')
+    + """
+
+Made up for the tests.
+"""
+)
+
+# --- Amuse Labs (PuzzleMe) player JSON, as the amuse adapter keeps it ---
+
+
+def amuse_ms(day: dt.date) -> int:
+    """publishTime for noon UTC on the day, in milliseconds."""
+    return int(dt.datetime(day.year, day.month, day.day, 12, 0, tzinfo=dt.UTC).timestamp() * 1000)
+
+
+def amuse() -> dict:
+    """FIVE as the player's JSON: box is by column (box[x][y]), "\\x00" a block."""
+    box = [["\x00" if FIVE[r][c] == "#" else five_value(r, c) for r in range(5)] for c in range(5)]
+    words = [
+        ("<i>Male</i> duck, with &quot;quotes&quot;", True, 1, 0, 0),
+        ("Fossil resin — café colour", True, 4, 0, 2),
+        ("Handbills", True, 5, 0, 4),
+        ("Small fairy-tale miner", False, 1, 0, 0),
+        ("Monastery", False, 2, 2, 0),
+        ("Mistakes…", False, 3, 4, 0),
+    ]
+    return {
+        "title": "Bird Words",
+        "subtitle": "",
+        "description": "Made up for the tests.",
+        "author": "Ann Setter & Bo Builder / Ed. Cy Editor",
+        "copyright": "© 2026 Example Syndicate",
+        "id": "tca261028",
+        "puzzleType": "CROSSWORD",
+        "unlinkGridAndClues": False,
+        "publishTime": amuse_ms(dt.date(2026, 10, 28)),
+        "publishTimeZone": "America/New_York",
+        "w": 5,
+        "h": 5,
+        "box": box,
+        "cellInfos": [{"x": FIVE_CIRCLE[1], "y": FIVE_CIRCLE[0], "isCircled": True, "rightWall": False}],
+        "placedWords": [
+            {"x": x, "y": y, "acrossNotDown": across, "clueNum": str(n), "nBoxes": 5, "clue": {"clue": text}}
+            for text, across, n, x, y in words
+        ],
+    }
+
+
+AMUSE_XD = (
+    """\
+Title: Bird Words
+Author: Ann Setter and Bo Builder
+Editor: Cy Editor
+Copyright: © 2026 Example Syndicate
+Date: 2026-10-28
+Special: circle
+Rebus: 1=RS
+
+
+"""
+    + FIVE_XD_GRID_AND_CLUES
     + """
 
 Made up for the tests.

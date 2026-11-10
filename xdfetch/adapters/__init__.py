@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from importlib import metadata
 
+from .amuse import AmuseAdapter
 from .base import Adapter, Fetched, MissingSecret, Target
 from .conde import CondeAdapter
 from .nyt import NytAdapter
@@ -30,6 +31,7 @@ ADAPTERS: dict[str, type[Adapter]] = {
     CondeAdapter.name: CondeAdapter,
     PageAdapter.name: PageAdapter,
     PrincetonianAdapter.name: PrincetonianAdapter,
+    AmuseAdapter.name: AmuseAdapter,
 }
 
 
