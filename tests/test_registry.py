@@ -70,6 +70,7 @@ PUBLIC_IDS = [
     "kingfeatures.thomas-joseph",
     "kingfeatures.eugene-sheffer",
     "kingfeatures.premier-sunday",
+    "wsj.daily",
 ]
 
 

@@ -21,6 +21,7 @@ from .gamedist import GameDistAdapter
 from .nyt import NytAdapter
 from .page import PageAdapter
 from .princetonian import PrincetonianAdapter
+from .puzzlr import PuzzlrAdapter
 from .url import UrlAdapter
 
 ENTRY_POINT_GROUP = "xdfetch.adapters"
@@ -32,6 +33,7 @@ ADAPTERS: dict[str, type[Adapter]] = {
     PageAdapter.name: PageAdapter,
     PrincetonianAdapter.name: PrincetonianAdapter,
     GameDistAdapter.name: GameDistAdapter,
+    PuzzlrAdapter.name: PuzzlrAdapter,
 }
 
 

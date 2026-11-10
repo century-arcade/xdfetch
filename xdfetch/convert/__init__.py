@@ -83,12 +83,13 @@ class PluginError(ConvertError):
 
 
 def _builtins() -> list[Entry]:
-    from . import ccjson, ccxml, conde, ipuz, nytjson, princetonian, puz, uclick, wapo
+    from . import ccjson, ccxml, conde, ipuz, nytjson, princetonian, puz, puzzlr, uclick, wapo
 
     return [
         ("uclick", uclick.sniff, uclick.convert),
         ("nytjson", nytjson.sniff, nytjson.convert),
         ("conde", conde.sniff, conde.convert),
+        ("puzzlr", puzzlr.sniff, puzzlr.convert),
         ("wapo", wapo.sniff, wapo.convert),
         ("princetonian", princetonian.sniff, princetonian.convert),
         ("ipuz", ipuz.sniff, ipuz.convert),

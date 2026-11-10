@@ -61,7 +61,7 @@ def test_fetch_returns_bytes_in_hand_without_a_request(registry, http):
 
 
 def test_builtins():
-    assert set(adapters.ADAPTERS) == {"url", "nyt", "conde", "page", "princetonian", "gamedist"}
+    assert set(adapters.ADAPTERS) == {"url", "nyt", "conde", "page", "princetonian", "gamedist", "puzzlr"}
     assert adapters.get("url") is adapters.ADAPTERS["url"]
 
 
