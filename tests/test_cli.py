@@ -146,3 +146,12 @@ def test_get_http_error():
 
 def test_get_name_is_not_supported_yet():
     assert main(["get", "nyt"]) == USAGE
+
+
+def test_convert_names_the_format_of_a_broken_file(in_tmp, puz_bytes, capsys):
+    (in_tmp / "broken.puz").write_bytes(puz_bytes[:60])
+    (in_tmp / "broken.json").write_bytes(b'{"publicationDate": "2026-10-28", "cells": [], "body": [{}]}')
+    assert main(["convert", "broken.puz", "broken.json"]) == FAILED
+    err = capsys.readouterr().err
+    assert "broken.puz: not a valid puz file (" in err
+    assert "broken.json: not a valid nytjson file (KeyError: 'dimensions')" in err

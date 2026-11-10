@@ -1,7 +1,7 @@
 """xdfetch: download crossword puzzles and convert them to .xd.
 
-  xdfetch get URL         download a .puz or .ipuz file and write it as .xd (or as served)
-  xdfetch convert FILE    convert local .puz or .ipuz files to .xd
+  xdfetch get URL         download a puzzle file and write it as .xd (or as served)
+  xdfetch convert FILE    convert local puzzle files to .xd
 
 Output goes to the current directory, named after the input (puzzle.puz -> puzzle.xd).
 """
@@ -13,10 +13,27 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .formats import ConvertError, convert
+from .convert import Context, ConvertError, PluginError, UnknownFormat, format_of
+from .convert import convert as convert_puzzle
 from .http import DownloadError, download
 
 OK, FAILED, USAGE = 0, 1, 2
+
+
+def convert(data: bytes, filename: str) -> str:
+    """The .xd text for a puzzle file's bytes, whatever its format (see xdfetch.convert)."""
+    name = filename or "input"
+    try:
+        _, puzzle = convert_puzzle(data, Context(filename=filename))
+    except UnknownFormat as e:
+        raise ConvertError(f"{name}: not a puzzle format xdfetch knows") from e
+    except PluginError as e:
+        raise ConvertError(f"{name}: {e}") from e
+    except ConvertError as e:
+        raise ConvertError(f"{name}: not a valid {format_of(e) or 'puzzle'} file ({e})") from e
+    except Exception as e:  # a damaged file can trip a converter in ways it doesn't foresee
+        raise ConvertError(f"{name}: not a valid {format_of(e) or 'puzzle'} file ({type(e).__name__}: {e})") from e
+    return puzzle.to_xd()
 
 
 def output_path(name: str, out: str | None) -> Path | None:
