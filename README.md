@@ -145,6 +145,7 @@ if any fetch ended in `error`; a `missing` is not an error.
 | Condé Nast puzzle record | The New Yorker |
 | Washington Post games JSON | The Washington Post |
 | Daily Princetonian crossword API | The Daily Princetonian |
+| Amuse Labs (PuzzleMe) puzzle JSON, unscrambled from the player page | the LA Times, the Atlantic, Newsday, Vox, many others |
 
 Other packages can add formats; see "Adding to xdfetch from another package" below.
 
@@ -155,7 +156,10 @@ The series xdfetch knows how to fetch are rows of
 `publisher.series`: `nytimes.daily`, `nytimes.mini`, `nytimes.midi`, `newyorker.daily`,
 `newyorker.mini`, `universal.daily`, `universal.sunday`, `usatoday.daily`,
 `washingtonpost.sunday`, `arkadium.mini`, `arkadium.two-minute-mini`,
-`brendanemmettquigley.blog`, `dailyprincetonian.daily`, `dailyprincetonian.mini`.
+`brendanemmettquigley.blog`, `dailyprincetonian.daily`, `dailyprincetonian.mini`,
+`latimes.daily`, `latimes.midi`, `atlantic.daily`, `newsday.daily`, `dailybeast.daily`,
+`crosswordclub.daily`, `crosswordclub.themed`, `vox.daily`, `vulture.daily`,
+`walrus.weekly`, `defector.weekly`.
 `xdfetch list` prints them all.
 
 A row's columns, of which only `id` and `adapter` are required:
@@ -163,7 +167,7 @@ A row's columns, of which only `id` and `adapter` are required:
 | Column | Meaning | Blank means |
 |---|---|---|
 | `id` | the series' id | |
-| `adapter` | which adapter fetches it: `url`, `page`, `nyt`, `conde`, `princetonian`, or one a package adds | |
+| `adapter` | which adapter fetches it: `url`, `page`, `nyt`, `conde`, `princetonian`, `amuse`, or one a package adds | |
 | `params` | the adapter's parameters, as `key=value` pairs separated by spaces (quote a value that holds spaces) | none |
 | `days` | the days a puzzle runs: `daily`, `mon-sat`, `sun`, `mon,thu` | daily |
 | `since` | the first date to expect a puzzle, `YYYY-MM-DD` | any date |
@@ -180,6 +184,14 @@ its `url` param is the address with strftime fields for the date (`%Y-%m-%d`), a
 optional `filename` param names the file to keep it under. `page` fetches a dated page
 (`page`, also with strftime fields) and then every file it links whose address matches
 the `link` regex.
+
+The `amuse` adapter fetches from an Amuse Labs (PuzzleMe) player: `host` is the player's
+base address and `set` the series on it. The puzzle id for a date comes from an `id`
+strftime template when the id encodes the date; or, with `page`, from the player embedded
+in the outlet's own page for the date (`fallback` names an undated page to try when that
+one is missing); else from the player's date picker, which lists only recent puzzles.
+Its converter reads `editor`, `title_drop`, `copyright=year` and `publish_offset` from the
+row too; `xdfetch/adapters/amuse.py` and `xdfetch/convert/amuse.py` describe them all.
 
 Adapters return each file as the outlet served it; converting is a separate step.
 
