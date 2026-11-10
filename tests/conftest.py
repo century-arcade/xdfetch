@@ -50,3 +50,51 @@ def puz_bytes() -> bytes:
 @pytest.fixture
 def ipuz_bytes() -> bytes:
     return json.dumps(make_ipuz(), ensure_ascii=False).encode("utf-8")
+
+
+@pytest.fixture
+def registry():
+    """xdfetch's own outlets.tsv, with no plugin registries."""
+    from xdfetch import registry as reg
+
+    return reg.builtin()
+
+
+@pytest.fixture
+def http():
+    """An Http that never sleeps."""
+    from xdfetch.http import Http
+
+    return Http(interval=0, retries=2, sleep=lambda s: None)
+
+
+class FakeEntryPoint:
+    """Stands in for importlib.metadata.EntryPoint: `obj` is what load() returns, or raises."""
+
+    def __init__(self, group: str, name: str, obj: object, value: str = ""):
+        self.group, self.name, self.obj = group, name, obj
+        self.value = value or f"fakepkg.module:{name}"
+
+    def load(self):
+        if isinstance(self.obj, BaseException):
+            raise self.obj
+        return self.obj
+
+
+@pytest.fixture
+def plugins(monkeypatch):
+    """Installs fake entry points: plugins(group, name, obj). Nothing real is installed."""
+    import importlib.metadata
+
+    installed: list[FakeEntryPoint] = []
+
+    def entry_points(**selection):
+        group = selection.get("group")
+        return [ep for ep in installed if group is None or ep.group == group]
+
+    monkeypatch.setattr(importlib.metadata, "entry_points", entry_points)
+
+    def add(group: str, name: str, obj: object, value: str = "") -> None:
+        installed.append(FakeEntryPoint(group, name, obj, value))
+
+    return add
