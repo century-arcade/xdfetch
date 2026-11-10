@@ -50,7 +50,7 @@ jobs:
       - run: twine check --strict dist/*
       - name: run the tests against the built wheel
         run: |
-          pip install "$(ls dist/*.whl)" pytest
+          pip install "$(ls dist/*.whl)" pytest responses
           # run from outside the checkout so the tests import the installed wheel
           cd "$RUNNER_TEMP"
           pytest "$GITHUB_WORKSPACE/tests"
