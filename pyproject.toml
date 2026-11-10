@@ -5,22 +5,25 @@ build-backend = "hatchling.build"
 [project]
 name = "xdfetch"
 dynamic = ["version"]
-description = "Fetch crossword puzzles from online outlets and convert them to .xd"
+description = "Download crossword puzzles and convert them to .xd"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [{ name = "Alex DeJarnatt" }]
 keywords = ["crossword", "puzzles", "xd", "downloader"]
 classifiers = [
-    "Development Status :: 1 - Planning",
+    "Development Status :: 2 - Pre-Alpha",
     "Environment :: Console",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Games/Entertainment :: Puzzle Games",
 ]
-dependencies = []
+dependencies = [
+    "requests>=2.32",
+    "xdformat[convert]>=0.2.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/century-arcade/xdfetch"
@@ -31,7 +34,12 @@ Issues = "https://github.com/century-arcade/xdfetch/issues"
 xdfetch = "xdfetch.cli:main"
 
 [dependency-groups]
-dev = ["pytest>=8", "ruff>=0.8"]
+dev = [
+    "pytest>=8",
+    "responses>=0.26.3",
+    "ruff>=0.8",
+    "ty>=0.0.100",
+]
 
 [tool.hatch.version]
 path = "xdfetch/__init__.py"
@@ -41,10 +49,17 @@ packages = ["xdfetch"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "W"]
+select = ["E", "W", "F", "I", "UP", "B", "SIM", "RUF", "PT"]
+
+[tool.ty.environment]
+python-version = "3.11"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = ["--strict-markers"]
+filterwarnings = [
+    "ignore:invalid escape sequence:DeprecationWarning",  # from the ipuz package
+]
