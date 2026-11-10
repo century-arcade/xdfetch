@@ -85,11 +85,50 @@ def test_get_url(in_tmp, puz_bytes):
 
 
 @responses.activate
-def test_get_raw_keeps_the_file_as_served(in_tmp, puz_bytes):
+def test_get_both_keeps_the_file_as_served(in_tmp, puz_bytes):
     responses.get(URL, body=puz_bytes)
-    assert main(["get", URL, "--raw"]) == OK
+    assert main(["get", URL, "--format", "both"]) == OK
     assert (in_tmp / "tiny.puz").read_bytes() == puz_bytes
     assert (in_tmp / "tiny.xd").exists()
+
+
+@responses.activate
+def test_get_both_with_a_named_output(in_tmp, puz_bytes):
+    responses.get(URL, body=puz_bytes)
+    (in_tmp / "out").mkdir()
+    assert main(["get", URL, "--format", "both", "-o", "out/mine.xd"]) == OK
+    assert "Title: Tiny" in (in_tmp / "out" / "mine.xd").read_text(encoding="utf-8")
+    assert (in_tmp / "out" / "tiny.puz").read_bytes() == puz_bytes
+
+
+@responses.activate
+def test_get_raw_writes_only_the_file_as_served(in_tmp, puz_bytes):
+    responses.get(URL, body=puz_bytes)
+    assert main(["get", URL, "--format", "raw"]) == OK
+    assert (in_tmp / "tiny.puz").read_bytes() == puz_bytes
+    assert not (in_tmp / "tiny.xd").exists()
+
+
+@responses.activate
+def test_get_raw_does_not_need_a_known_format(in_tmp):
+    responses.get("https://example.com/today.json", body=b'{"some": "site format"}')
+    assert main(["get", "https://example.com/today.json", "--format", "raw", "-o", "saved.json"]) == OK
+    assert (in_tmp / "saved.json").read_bytes() == b'{"some": "site format"}'
+
+
+@responses.activate
+def test_get_raw_to_stdout(in_tmp, puz_bytes, capsysbinary):
+    responses.get(URL, body=puz_bytes)
+    assert main(["get", URL, "--format", "raw", "-o", "-"]) == OK
+    assert capsysbinary.readouterr().out == puz_bytes
+    assert not (in_tmp / "tiny.puz").exists()
+
+
+@responses.activate
+def test_get_both_writes_nothing_when_conversion_fails(in_tmp):
+    responses.get(URL, body=b"<html>Please log in</html>")
+    assert main(["get", URL, "--format", "both"]) == FAILED
+    assert list(in_tmp.iterdir()) == []
 
 
 @responses.activate

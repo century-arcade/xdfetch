@@ -11,7 +11,8 @@ by site name (`xdfetch get lat`) is next.
     pip install xdfetch            # or: uv tool install xdfetch
 
     xdfetch get https://example.com/puzzle.puz      # -> puzzle.xd
-    xdfetch get https://example.com/puzzle.puz --raw   # also keep puzzle.puz as served
+    xdfetch get https://example.com/puzzle.puz --format both   # also keep puzzle.puz as served
+    xdfetch get https://example.com/puzzle.puz --format raw    # only the file as served
     xdfetch convert *.puz *.ipuz                    # -> one .xd each
     xdfetch convert old.puz -o -                    # to stdout
 
