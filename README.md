@@ -164,7 +164,7 @@ The series xdfetch knows how to fetch are rows of
 `crosswordclub.daily`, `crosswordclub.themed`, `vox.daily`, `vulture.daily`,
 `walrus.weekly`, `defector.weekly`, `kingfeatures.thomas-joseph`,
 `kingfeatures.eugene-sheffer`, `kingfeatures.premier-sunday`, `wsj.daily`,
-`bostonglobe.sunday`, `bostonglobe.mini`, `puzzmo.daily`, `puzzmo.mini`, `puzzmo.big`.
+`bostonglobe.sunday`, `bostonglobe.mini`.
 `xdfetch list` prints them all.
 
 A row's columns, of which only `id` and `adapter` are required:
@@ -208,8 +208,7 @@ Three more fetch from platforms that also carry several outlets' puzzles:
 - `puzzlr`, PZLR: `tenant` is the publisher's slug, and `offset` the days added to the
   date asked for to get the date PZLR files the puzzle under. `copyright` is written when
   the puzzle carries none.
-- `puzzmo`, Puzzmo: `team` and `queue` name a publisher's queue, or `finder` names one of
-  Puzzmo's own series (`crossword`, `crossword/mini`, `crossword/big`).
+- `puzzmo`, Puzzmo: `team` and `queue` name a publisher's queue.
 
 Adapters return each file as the outlet served it; converting is a separate step.
 
