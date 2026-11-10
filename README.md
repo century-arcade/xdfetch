@@ -145,6 +145,9 @@ if any fetch ended in `error`; a `missing` is not an error.
 | Condé Nast puzzle record | The New Yorker |
 | Washington Post games JSON | The Washington Post |
 | Daily Princetonian crossword API | The Daily Princetonian |
+| Crossword Compiler as JSON (xml2js) | King Features, on GameDistribution's feeds |
+| PZLR crossword level | The Wall Street Journal |
+| Puzzmo's xd dialect, in its GraphQL answers | Puzzmo, the Boston Globe |
 
 Other packages can add formats; see "Adding to xdfetch from another package" below.
 
@@ -155,15 +158,17 @@ The series xdfetch knows how to fetch are rows of
 `publisher.series`: `nytimes.daily`, `nytimes.mini`, `nytimes.midi`, `newyorker.daily`,
 `newyorker.mini`, `universal.daily`, `universal.sunday`, `usatoday.daily`,
 `washingtonpost.sunday`, `arkadium.mini`, `arkadium.two-minute-mini`,
-`brendanemmettquigley.blog`, `dailyprincetonian.daily`, `dailyprincetonian.mini`.
-`xdfetch list` prints them all.
+`brendanemmettquigley.blog`, `dailyprincetonian.daily`, `dailyprincetonian.mini`,
+`kingfeatures.thomas-joseph`, `kingfeatures.eugene-sheffer`, `kingfeatures.premier-sunday`,
+`wsj.daily`, `bostonglobe.sunday`, `bostonglobe.mini`, `puzzmo.daily`, `puzzmo.mini`,
+`puzzmo.big`. `xdfetch list` prints them all.
 
 A row's columns, of which only `id` and `adapter` are required:
 
 | Column | Meaning | Blank means |
 |---|---|---|
 | `id` | the series' id | |
-| `adapter` | which adapter fetches it: `url`, `page`, `nyt`, `conde`, `princetonian`, or one a package adds | |
+| `adapter` | which adapter fetches it: `url`, `page`, `nyt`, `conde`, `princetonian`, `gamedist`, `puzzlr`, `puzzmo`, or one a package adds | |
 | `params` | the adapter's parameters, as `key=value` pairs separated by spaces (quote a value that holds spaces) | none |
 | `days` | the days a puzzle runs: `daily`, `mon-sat`, `sun`, `mon,thu` | daily |
 | `since` | the first date to expect a puzzle, `YYYY-MM-DD` | any date |
@@ -180,6 +185,18 @@ its `url` param is the address with strftime fields for the date (`%Y-%m-%d`), a
 optional `filename` param names the file to keep it under. `page` fetches a dated page
 (`page`, also with strftime fields) and then every file it links whose address matches
 the `link` regex.
+
+Three more serve platforms that carry several outlets' puzzles:
+
+- `gamedist`, GameDistribution's crossword feeds (King Features' puzzles): `feed` is the
+  feed's slug. The rows also set how the puzzle is written: `author` (a fixed byline),
+  `dash` and `endash` (what to write for an em or en dash in a clue) and `quotes=repair`
+  (a space after a clue's opening quote mark removed, unbalanced quote marks noted).
+- `puzzlr`, PZLR: `tenant` is the publisher's slug, and `offset` the days added to the
+  date asked for to get the date PZLR files the puzzle under. `copyright` is written when
+  the puzzle carries none.
+- `puzzmo`, Puzzmo: `team` and `queue` name a publisher's queue, or `finder` names one of
+  Puzzmo's own series (`crossword`, `crossword/mini`, `crossword/big`).
 
 Adapters return each file as the outlet served it; converting is a separate step.
 
