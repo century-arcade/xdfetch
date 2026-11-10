@@ -9,7 +9,7 @@ params:
 How it works:
 
 - A month listing, https://crosswords-sgweb.gamedistribution.com/feed/<slug>/year/<YYYY>/month/<M>,
-  answers an anonymous GET with a JSON list of the puzzles from that month to the newest
+  answers with a JSON list of the puzzles from that month to the newest
   (about a week ahead of today): date, the feed's byline, and feedUrl, the puzzle's file
   under /storage/<slug>/<uuid>.json. Each month's listing is read once per run.
 - The file is a Crossword Compiler document as JSON, with the puzzle's record from the

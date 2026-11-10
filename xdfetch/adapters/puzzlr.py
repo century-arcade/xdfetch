@@ -8,7 +8,7 @@ params:
            default 0. The Journal's row asks for print dates and PZLR dates a puzzle by its
            online release, the day before: offset=-1.
 
-The embed's own request, an anonymous CORS call, answers by tenant and date with no sign-in:
+The adapter makes the request the embedded player makes for a date:
 
     https://api.puzzlr.net/trpc/crossword.getLevel?batch=1&input={"0":{"tenant":"wsj","date":"2026-10-28"}}
 

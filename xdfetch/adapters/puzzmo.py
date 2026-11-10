@@ -20,9 +20,7 @@ Team queues:
   puzzle; its `puzzle` field is the puzzle as xd text in Puzzmo's dialect. The response is
   saved as served, named <id>-YYYY-MM-DD.json by the list's publishDate.
 
-The team API does not give Puzzmo's own puzzles (the `puzzmo` team answers FORBIDDEN_TEAM),
-a list of a team's queues (that needs an Authorization header), or GraphQL introspection
-(disabled). A publisher's puzzles need the team slug and queue name from its player page.
+A publisher's row needs the team slug and queue name, which its player page uses.
 
 Puzzmo's own series (`finder=`), the way xword-dl gets them: the play screen's query,
 `startOrFindGameplay(finderKey: "today:/<date>/<finder>")`, posted to
