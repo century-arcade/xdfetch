@@ -1,4 +1,5 @@
-"""Tiny puzzles made up for the tests. Never use real, published puzzles here.
+"""Tiny puzzles made up for the tests (more, one per wire format, in synthetic.py). Never
+use real, published puzzles here.
 
 C A T      1A Café pet       1D Taxi
 A # O      3A Ribbon knot    2D Pull a barge
@@ -7,8 +8,8 @@ B O W
 
 import json
 
-import puz
 import pytest
+from synthetic import puz, puz_section
 
 SOLUTION = ["CAT", "A#O", "BOW"]
 TITLE, AUTHOR, COPYRIGHT = "Tiny", "A. Setter", "© 2026 Nobody"
@@ -22,16 +23,9 @@ EXPECTED_CLUES = [
 
 
 def make_puz(circle_first: bool = False) -> bytes:
-    p = puz.Puzzle()
-    p.width = p.height = 3
-    p.solution = "".join(SOLUTION).replace("#", ".")
-    p.fill = "".join("." if c == "." else "-" for c in p.solution)
-    p.title, p.author, p.copyright = TITLE, AUTHOR, COPYRIGHT
-    p.clues = ["Café pet", "Taxi", "Pull a barge", "Ribbon knot"]  # .puz order: by number, across first
-    if circle_first:
-        p.extensions[b"GEXT"] = bytes([0x80] + [0] * 8)
-        p._extensions_order.append(b"GEXT")
-    return p.tobytes()
+    clues = ["Café pet", "Taxi", "Pull a barge", "Ribbon knot"]  # .puz order: by number, across first
+    gext = puz_section(b"GEXT", bytes([0x80] + [0] * 8)) if circle_first else b""
+    return puz(SOLUTION, clues, TITLE, AUTHOR, COPYRIGHT, extra=gext)
 
 
 def make_ipuz() -> dict:
