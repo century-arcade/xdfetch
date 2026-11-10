@@ -4,12 +4,14 @@ tests/compat/store/ is what the code xdfetch's engine was ported from wrote for 
 below (two runs, made-up outlets and bytes), with that tool's name given as `othertool`.
 `othertool` adds a sources.tsv to each archive and a register file beside it; here it does
 so through `archive=` and `on_archive`, and every file in the store must come out the same,
-byte for byte. The report's archive path is compared with `/` separators.
+byte for byte. The report's archive path is compared with `/` separators, and the archives
+with the OS byte zipfile records set for this platform (see made_here).
 """
 
 import datetime as dt
 import functools
 import io
+import struct
 import types
 import zipfile
 import zlib
@@ -117,6 +119,21 @@ def zip_members(data: bytes) -> list[tuple]:
         return [(i.filename, i.date_time, i.compress_type, i.CRC, i.file_size, z.read(i)) for i in z.infolist()]
 
 
+def made_here(data: bytes) -> bytes:
+    """The zip as it would be written on this platform. zipfile records the OS a zip was made
+    on (0, Windows, where the expected archives were written; 3 elsewhere) in each central
+    directory entry's "version made by"; nothing else in the bytes depends on the OS."""
+    os_byte = zipfile.ZipInfo().create_system
+    out = bytearray(data)
+    _, _, _, _, count, _, offset, _ = struct.unpack("<4s4H2LH", data[-22:])  # end of central directory
+    for _ in range(count):
+        assert out[offset : offset + 4] == b"PK\x01\x02"
+        out[offset + 5] = os_byte
+        name_len, extra_len, comment_len = struct.unpack("<3H", data[offset + 28 : offset + 34])
+        offset += 46 + name_len + extra_len + comment_len
+    return bytes(out)
+
+
 def test_a_run_writes_the_store_byte_for_byte(tmp_path, monkeypatch, frozen_zip_clock, http):
     f = tmp_path / "outlets.tsv"
     f.write_text(REGISTRY, encoding="utf-8")
@@ -126,6 +143,7 @@ def test_a_run_writes_the_store_byte_for_byte(tmp_path, monkeypatch, frozen_zip_
 
     expected = sorted(p.relative_to(EXPECTED).as_posix() for p in EXPECTED.rglob("*") if p.is_file())
     assert store.list("") == expected
+    shas: dict[bytes, bytes] = {}  # an expected zip's sha256 -> the same zip's made here
     for key in expected:
         want, got = (EXPECTED / key).read_bytes(), store.get(key)
         assert got is not None
@@ -133,9 +151,15 @@ def test_a_run_writes_the_store_byte_for_byte(tmp_path, monkeypatch, frozen_zip_
             got = got.replace(b"\\", b"/")
         if key.endswith(".zip"):
             assert zip_members(got) == zip_members(want), key
+            here = made_here(want)
+            shas[archive.sha256(want).encode()] = archive.sha256(here).encode()
             if zlib.ZLIB_RUNTIME_VERSION == EXPECTED_ZLIB:
-                assert got == want, key
-        elif key.endswith(".register.tsv") and zlib.ZLIB_RUNTIME_VERSION != EXPECTED_ZLIB:
+                assert got == here, key
+        elif key.endswith(".register.tsv") and zlib.ZLIB_RUNTIME_VERSION == EXPECTED_ZLIB:
+            for old, new in shas.items():
+                want = want.replace(old, new)
+            assert got == want, key
+        elif key.endswith(".register.tsv"):
             # all but the zip's sha256 and size, which depend on the zlib
             g, w = tsv.parse(got.decode())[1][0], tsv.parse(want.decode())[1][0]
             assert {k: v for k, v in g.items() if k not in ("sha256", "bytes")} == {
