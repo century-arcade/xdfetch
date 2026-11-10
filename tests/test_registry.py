@@ -71,6 +71,11 @@ PUBLIC_IDS = [
     "kingfeatures.eugene-sheffer",
     "kingfeatures.premier-sunday",
     "wsj.daily",
+    "bostonglobe.sunday",
+    "bostonglobe.mini",
+    "puzzmo.daily",
+    "puzzmo.mini",
+    "puzzmo.big",
 ]
 
 
