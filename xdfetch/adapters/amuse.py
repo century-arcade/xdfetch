@@ -8,7 +8,8 @@ params:
   set       the series on that player, e.g. latimes
   id        optional strftime template for the player's puzzle id, when the id encodes the
             date (tca%y%m%d, atlantic_%Y%m%d). Without it, the id is looked up by
-            publication date on the set's date picker, which lists only recent puzzles.
+            publication date on the set's date picker, which lists only recent puzzles, and
+            for an older date in the set's whole puzzle list (step 1a below).
   page      optional template for the outlet's own page for a date, when the picker can't be
             trusted (Vulture's lists several puzzles under one date): the page embeds the
             player as `crossword?id=<id>&set=<set>`, and the id is read from that. strftime
@@ -22,7 +23,12 @@ How a fetch works (the player's protocol as worked out by xword-dl and kotwords)
 
 1. GET {host}/date-picker?set={set}. Its <script id="params"> JSON has `rawsps`, base64 of a
    JSON with a `loadToken` (a short-lived JWT), and `streakInfo`, the recent puzzles with
-   their ids and publication times. The response sets a `uid` cookie.
+   their ids and publication times. The response sets a `uid` cookie. `hasMore` says whether
+   the set has older puzzles than those.
+1a. For an older date: GET {host}/api/v1/puzzles?loadToken={token}&series={set}&limit=..&offset=..,
+   the request behind the picker's "Load more" button. It answers
+   {"status": 0, "seriesToPuzzleMetadata": {set: [puzzle details, newest first]}, "hasMore": ..},
+   with the same details as `streakInfo`; status 1 is a refusal (no token).
 2. GET {host}/crossword?id={id}&set={set}&loadToken={token}&fvlt={fvlt}, where fvlt (the
    player's first-visit load token) is the XOR of the 32-bit character sums of the set, the
    id and the uid cookie. Without the load token the player redirects to the outlet's site.
@@ -65,11 +71,15 @@ EMBED = re.compile(r"crossword\?id=([^&\"'\s]+)&(?:amp;)?set=([^&\"'\s]+)")
 class AmuseAdapter(Adapter):
     name = "amuse"
     interval = 3.0
+    page_size = 100  # puzzles per request when reading the set's list past the picker
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._picker: dict[str, Any] | None = None
         self._uid = ""
+        self._archive: list[dict[str, Any]] = []
+        self._archive_offset = 0
+        self._archive_more = True
 
     # --- the picker ---
 
@@ -110,17 +120,47 @@ class AmuseAdapter(Adapter):
 
     def listed(self) -> list[dict[str, Any]]:
         """Recent puzzles from the picker: [{id, title, date}], newest first."""
-        out = []
-        for item in self.picker().get("streakInfo") or []:
-            d = item.get("puzzleDetails") or {}
-            pid = d.get("puzzleId")
-            if not pid:
-                continue
-            ts = d.get("publicationTime")
-            tz = d.get("publicationTimeZone") or self.outlet.tz
-            day = dt.datetime.fromtimestamp(int(ts) / 1000, ZoneInfo(tz)).date() if ts else None
-            out.append({"id": pid, "title": d.get("title", ""), "date": day})
-        return out
+        entries = (self._entry(item.get("puzzleDetails") or {}) for item in self.picker().get("streakInfo") or [])
+        return [e for e in entries if e]
+
+    def _entry(self, d: dict[str, Any]) -> dict[str, Any] | None:
+        """{id, title, date} for one puzzle's details, as the picker and the list give them."""
+        pid = d.get("puzzleId")
+        if not pid:
+            return None
+        ts = d.get("publicationTime")
+        tz = d.get("publicationTimeZone") or self.outlet.tz
+        day = dt.datetime.fromtimestamp(int(ts) / 1000, ZoneInfo(tz)).date() if ts else None
+        return {"id": pid, "title": d.get("title", ""), "date": day}
+
+    def archive_back_to(self, date: dt.date) -> list[dict[str, Any]]:
+        """The set's puzzles, newest first, read until one is dated before `date` or the list
+        ends: the picker's "Load more" request (api/v1/puzzles) with the picker's load token.
+        Pages already read are kept for the rest of the run."""
+        url = f"{self.host}/api/v1/puzzles"
+        while self._archive_more:
+            last = self._archive[-1]["date"] if self._archive else None
+            if last and last < date:
+                break
+            params = {
+                "loadToken": self.load_token(),
+                "series": self.set,
+                "limit": str(self.page_size),
+                "offset": str(self._archive_offset),
+            }
+            r = self.http.get(url, params=params, interval=self.interval)
+            try:
+                d = r.json()
+            except ValueError as e:
+                raise FetchError(f"puzzle list is not JSON: {e}", url=url) from e
+            if not isinstance(d, dict) or d.get("status") != 0:
+                message = d.get("errorMessage") if isinstance(d, dict) else None
+                raise FetchError(f"puzzle list refused: {message or d}", url=url)
+            batch = (d.get("seriesToPuzzleMetadata") or {}).get(self.set) or []
+            self._archive_offset += len(batch)
+            self._archive += [e for e in map(self._entry, batch) if e]
+            self._archive_more = bool(d.get("hasMore")) and bool(batch)
+        return self._archive
 
     def id_from_page(self, date: dt.date) -> str:
         """The puzzle id from the outlet's own page for the date (the `page` param)."""
@@ -153,11 +193,18 @@ class AmuseAdapter(Adapter):
         if self.outlet.params.get("page"):
             return self.id_from_page(date)
         listed = self.listed()
+        oldest = min((p["date"] for p in listed if p["date"]), default=None)
+        where = "on the date picker"
+        if (oldest is None or date < oldest) and self.picker().get("hasMore"):
+            # older than the picker's first page: read further back, as its "Load more" does
+            listed = self.archive_back_to(date)
+            where = "in the set's puzzle list"
         matches = [p for p in listed if p["date"] == date]
         if not matches:
-            span = f"{listed[-1]['date']} to {listed[0]['date']}" if listed else "nothing"
+            dates = [p["date"] for p in listed if p["date"]]
+            span = f"{min(dates)} to {max(dates)}" if dates else "nothing"
             raise NotFound(
-                f"no {self.set} puzzle dated {date} on the date picker (it lists {span})",
+                f"no {self.set} puzzle dated {date} {where} (it lists {span})",
                 url=f"{self.host}/date-picker?set={self.set_q}",
             )
         if len(matches) > 1:

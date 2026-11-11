@@ -26,7 +26,7 @@ TOKEN = "eyJ0eXAiOiJKV1QifQ.token.sig"
 LAT = "latimes.daily"
 
 
-def picker_page(puzzles, set_name="latimes"):
+def picker_page(puzzles, set_name="latimes", has_more=None):
     """A date picker: its params carry the load token and the recent puzzles (id, title, publishTime)."""
     sps = base64.b64encode(json.dumps({"loadToken": TOKEN, "set": set_name}).encode()).decode()
     streak = [
@@ -41,8 +41,19 @@ def picker_page(puzzles, set_name="latimes"):
         }
         for pid, title, ts in puzzles
     ]
-    params = json.dumps({"rawsps": sps, "streakInfo": streak})
-    return f'<html><head><script type="application/json" id="params">{params}</script></head></html>'
+    params = {"rawsps": sps, "streakInfo": streak}
+    if has_more is not None:
+        params["hasMore"] = has_more
+    return f'<html><head><script type="application/json" id="params">{json.dumps(params)}</script></head></html>'
+
+
+def puzzle_list(puzzles, set_name, has_more):
+    """One page of the set's puzzle list (api/v1/puzzles), newest first."""
+    details = [
+        {"puzzleId": pid, "title": title, "publicationTime": ts, "publicationTimeZone": "America/New_York"}
+        for pid, title, ts in puzzles
+    ]
+    return {"status": 0, "seriesToPuzzleMetadata": {set_name: details}, "hasMore": has_more}
 
 
 def puzzle_page(text, key=(5, 7, 3, 11, 2, 9, 4)):
@@ -155,6 +166,58 @@ def test_fetch_with_picker_lookup(registry, http):
     with pytest.raises(NotFound, match="2026-10-28 to 2026-10-29"):
         a.targets(day - dt.timedelta(days=5))
     assert len(responses.calls) == 1  # the picker is fetched once per adapter
+
+
+TDB_PICKER = "https://cdn3.amuselabs.com/tdb/date-picker?set=tdb"
+TDB_LIST = "https://cdn3.amuselabs.com/tdb/api/v1/puzzles"
+
+
+def list_page(offset, body):
+    match = {"loadToken": TOKEN, "series": "tdb", "limit": "100", "offset": str(offset)}
+    responses.add(responses.GET, TDB_LIST, json=body, match=[responses.matchers.query_param_matcher(match)])
+
+
+def days_before(day, *ns):
+    return [(f"{n:04d}cccc", f"Day {n}", amuse_ms(day - dt.timedelta(days=n))) for n in ns]
+
+
+@responses.activate
+def test_older_date_is_read_from_the_puzzle_list(registry, http):
+    day = dt.date(2026, 10, 28)
+    responses.add(responses.GET, TDB_PICKER, body=picker_page([("2222bbbb", "Wed", amuse_ms(day))], "tdb", True))
+    # the list starts at the newest puzzle, so its first page repeats the picker's
+    list_page(0, puzzle_list([("2222bbbb", "Wed", amuse_ms(day)), *days_before(day, 7, 14)], "tdb", True))
+    list_page(3, puzzle_list(days_before(day, 21, 28), "tdb", True))
+    list_page(5, puzzle_list(days_before(day, 35), "tdb", False))
+    a = adapter.AmuseAdapter(registry["dailybeast.daily"], http)
+    assert a.targets(day - dt.timedelta(days=21))[0].filename == "0021cccc.json"
+    assert len(responses.calls) == 3  # the picker, then pages until one reaches back past the date
+    assert a.targets(day - dt.timedelta(days=7))[0].filename == "0007cccc.json"
+    assert len(responses.calls) == 3  # already read
+    with pytest.raises(NotFound, match=r"in the set's puzzle list \(it lists 2026-09-23 to 2026-10-28\)"):
+        a.targets(day - dt.timedelta(days=50))
+    assert len(responses.calls) == 4  # the last page, then no more
+
+
+@responses.activate
+def test_a_gap_inside_the_pickers_dates_is_missing_without_reading_the_list(registry, http):
+    day = dt.date(2026, 10, 28)
+    puzzles = [("1111aaaa", "Wed", amuse_ms(day)), ("3333cccc", "Mon", amuse_ms(day - dt.timedelta(days=2)))]
+    responses.add(responses.GET, TDB_PICKER, body=picker_page(puzzles, "tdb", True))
+    a = adapter.AmuseAdapter(registry["dailybeast.daily"], http)
+    with pytest.raises(NotFound, match="on the date picker"):
+        a.targets(day - dt.timedelta(days=1))
+    assert len(responses.calls) == 1
+
+
+@responses.activate
+def test_refused_puzzle_list_is_an_error(registry, http):
+    day = dt.date(2026, 10, 28)
+    responses.add(responses.GET, TDB_PICKER, body=picker_page([("2222bbbb", "Wed", amuse_ms(day))], "tdb", True))
+    responses.add(responses.GET, TDB_LIST, json={"status": 1, "errorMessage": "You do not have access"})
+    a = adapter.AmuseAdapter(registry["dailybeast.daily"], http)
+    with pytest.raises(FetchError, match="refused: You do not have access"):
+        a.targets(day - dt.timedelta(days=7))
 
 
 @responses.activate

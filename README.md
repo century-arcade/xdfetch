@@ -194,7 +194,8 @@ The `amuse` adapter fetches from an Amuse Labs (PuzzleMe) player: `host` is the 
 base address and `set` the series on it. The puzzle id for a date comes from an `id`
 strftime template when the id encodes the date; or, with `page`, from the player embedded
 in the outlet's own page for the date (`fallback` names an undated page to try when that
-one is missing); else from the player's date picker, which lists only recent puzzles.
+one is missing); else from the player's date picker, which lists recent puzzles, and for
+an older date from the set's full puzzle list, the request behind the picker's "Load more".
 Its converter reads `editor`, `title_drop`, `copyright=year`, `publish_offset` and
 `date_title=weekday` from the
 row too; `xdfetch/adapters/amuse.py` and `xdfetch/convert/amuse.py` describe them all.
