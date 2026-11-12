@@ -9,7 +9,8 @@ The fields used:
   cellInfos[{x, y, isCircled, bgColor, fgColor,        circles and shading; bars, voids and
              rightWall, bottomWall, isVoid}]           images are listed as tricky
   placedWords[{x, y, acrossNotDown, clueNum, nBoxes,
-               clue: {clue}}]                          the clues; clue text has <i>, <b>, <sup>, <a>
+               clue: {clue, media}}]                   the clues; clue text has <i>, <b>, <sup>, <a>;
+                                                      media[{URL, mediaType}] is a picture clue
   unlinkGridAndClues, clueSections, puzzleType        anything unusual needs review or is tricky
 
 A byline "A / Ed. B" (or "A, edited by B") splits into Author and Editor; "A & B" becomes
@@ -18,6 +19,8 @@ A byline "A / Ed. B" (or "A, edited by B") splits into Author and Editor; "A & B
 square gets a digit key, or a lowercase letter key when it is circled or shaded. The
 description and subtitle go in the notes; the player's own messages (help, pauseMessage,
 endMessage) are not carried. A puzzle with no title is titled by its date ("October 28, 2026").
+A clue that is only a picture (no text, an image in `media`) is written `[picture]`; the picture
+isn't kept, and every clue with a picture is listed as tricky.
 
 Outlet conventions come from ctx.params:
   publish_offset  days from the puzzle's date to the payload's publishTime, for an outlet that
@@ -192,11 +195,16 @@ def convert(data: bytes, ctx: Context) -> Puzzle:
         raw = clue.get("clue", "") if isinstance(clue, dict) else str(clue or "")
         if re.search(r"<a\s", raw, flags=re.I):
             p.tricky.append(f"{direction}{number}: link in clue; the words are kept, the URL is not")
-        if re.search(r"<img\s", raw, flags=re.I):
+        media = clue.get("media") if isinstance(clue, dict) else None
+        pictured = any(isinstance(m, dict) and str(m.get("mediaType", "")).upper() == "IMAGE" for m in media or [])
+        if pictured or re.search(r"<img\s", raw, flags=re.I):
             p.tricky.append(f"{direction}{number}: image in clue")
         if numbering.get((direction, number)) != (y, x):
             p.needs_review(f"{direction}{number}: numbered at row {y} col {x}, standard numbering disagrees")
-        p.clues.append(Clue(direction, number, clue_text(raw), answer))
+        text = clue_text(raw)
+        if pictured and not text.strip():
+            text = "[picture]"
+        p.clues.append(Clue(direction, number, text, answer))
     if not p.clues:
         raise ConvertError("no clues")
 
