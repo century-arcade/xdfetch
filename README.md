@@ -257,6 +257,8 @@ then the packages'; a missing or broken one is an error that names it.
 Tests use tiny puzzles made up for the purpose (`tests/conftest.py`, `tests/synthetic.py`).
 Please don't add real, published puzzles to the repo.
 
+New outlets and bug fixes are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
