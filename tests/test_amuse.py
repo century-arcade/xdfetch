@@ -415,6 +415,22 @@ def test_tricky_cases():
     assert p.grid[0][0] == "d"  # the shaded square, kept as a circle
 
 
+def test_picture_clues():
+    d = amuse()
+    image = {"URL": "/media/example/picture.png", "mediaType": "IMAGE"}
+    # a clue that is only a picture, as the player gives it: no text, the image in media
+    d["placedWords"][0]["clue"] = {"clue": "", "credits": "[Photo: Example]", "media": [image]}
+    # a picture beside words: the words stay
+    d["placedWords"][1]["clue"] = {"clue": "Seen here", "media": [image]}
+    _, p = convert.convert(as_bytes(d), convert.Context(LAT, YESTERDAY, "f"))
+    first, second = p.clues[0], p.clues[1]
+    assert first.text == "[picture]"
+    assert second.text == "Seen here"
+    assert f"{first.direction}{first.number}: image in clue" in p.tricky
+    assert f"{second.direction}{second.number}: image in clue" in p.tricky
+    assert f"{first.direction}{first.number}. [picture] ~ " in p.to_xd()
+
+
 def test_shaded_only_and_a_marked_rebus():
     d = amuse()
     d["cellInfos"] = [{"x": 4, "y": 4, "bgColor": "#ccc"}]  # the rebus square
