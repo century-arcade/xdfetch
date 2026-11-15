@@ -465,11 +465,27 @@ def test_not_amuse():
 def test_untitled_puzzle_is_titled_by_date_and_block_marks_are_styling():
     d = amuse()
     d["title"] = ""
-    d["cellInfos"] = [{"x": 1, "y": 1, "bgColor": "#000"}, {"x": 0, "y": 0, "fgColor": "#151515"}]
+    d["cellInfos"] = [{"x": 1, "y": 1, "bgColor": "#000"}]
+    d["cellInfos"] += [{"x": x, "y": y, "fgColor": "#151515"} for x in range(d["w"]) for y in range(d["h"])]
     _, p = convert.convert(as_bytes(d), convert.Context("vox.daily", YESTERDAY, "f"))
     assert p.headers["Title"] == "October 28, 2026"
     assert "Special" not in p.headers
     assert p.tricky == []
+
+
+def test_coloured_letters_are_tricky():
+    # a colour on some letters (a theme's red letters) is tricky, and so is a colour on every
+    # cell when it isn't one colour
+    d = amuse()
+    d["cellInfos"] = [{"x": 1, "y": 0, "fgColor": "#E00000"}, {"x": 2, "y": 3, "fgColor": "#e00000"}]
+    _, p = convert.convert(as_bytes(d), convert.Context(LAT, YESTERDAY, "f"))
+    assert p.tricky == ["coloured letters (fgColor) at row 0 col 1, row 3 col 2"]
+    assert "Special" not in p.headers
+
+    d["cellInfos"] = [{"x": x, "y": y, "fgColor": "#151515"} for x in range(d["w"]) for y in range(d["h"])]
+    d["cellInfos"][0]["fgColor"] = "#ff0000"
+    _, p = convert.convert(as_bytes(d), convert.Context(LAT, YESTERDAY, "f"))
+    assert len(p.tricky) == 1 and p.tricky[0].startswith("coloured letters (fgColor) at row 0 col 0, ")
 
 
 @pytest.mark.parametrize(

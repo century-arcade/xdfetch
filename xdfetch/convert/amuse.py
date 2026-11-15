@@ -20,7 +20,8 @@ square gets a digit key, or a lowercase letter key when it is circled or shaded.
 description and subtitle go in the notes; the player's own messages (help, pauseMessage,
 endMessage) are not carried. A puzzle with no title is titled by its date ("October 28, 2026").
 A clue that is only a picture (no text, an image in `media`) is written `[picture]`; the picture
-isn't kept, and every clue with a picture is listed as tricky.
+isn't kept, and every clue with a picture is listed as tricky. Coloured letters (fgColor) are
+tricky too, unless one colour is on every cell, blocks included: that is the outlet's styling.
 
 Outlet conventions come from ctx.params:
   publish_offset  days from the puzzle's date to the payload's publishTime, for an outlet that
@@ -118,6 +119,7 @@ def convert(data: bytes, ctx: Context) -> Puzzle:
     # cell marks
     circled: set[tuple[int, int]] = set()
     shaded: set[tuple[int, int]] = set()
+    letter_colours: dict[tuple[int, int], str] = {}
     for ci in d.get("cellInfos") or []:
         x, y = ci.get("x"), ci.get("y")
         if not (isinstance(x, int) and isinstance(y, int)) or isinstance(x, bool) or isinstance(y, bool):
@@ -125,14 +127,22 @@ def convert(data: bytes, ctx: Context) -> Puzzle:
         is_block = 0 <= x < w and 0 <= y < h and box[x][y] == BLOCK_CELL
         if ci.get("isCircled"):
             circled.add((y, x))
-        if ci.get("bgColor") and not is_block:  # fgColor is the text's colour; a bgColor on a block is styling
+        if ci.get("bgColor") and not is_block:  # a bgColor on a block is styling
             shaded.add((y, x))
+        if ci.get("fgColor") and 0 <= x < w and 0 <= y < h:
+            letter_colours[(y, x)] = str(ci["fgColor"]).lower()
         if ci.get("isVoid"):
             p.tricky.append(f"void cell at row {y} col {x}")
         if ci.get("rightWall") or ci.get("bottomWall"):
             p.tricky.append(f"bar at row {y} col {x}")
         if ci.get("bgImage") or ci.get("image"):
             p.tricky.append(f"image in cell at row {y} col {x}")
+    # one colour on every cell is styling; otherwise the colour may be part of the theme,
+    # which xd can't mark yet
+    uniform = len(letter_colours) == w * h and len(set(letter_colours.values())) == 1
+    if letter_colours and not uniform:
+        cells = ", ".join(f"row {r} col {c}" for r, c in sorted(letter_colours))
+        p.tricky.append(f"coloured letters (fgColor) at {cells}")
     if circled and shaded:
         p.tricky.append("both circled and shaded squares; xd marks only one kind (shading kept as circles)")
     marked = circled | shaded
