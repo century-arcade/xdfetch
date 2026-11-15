@@ -485,7 +485,8 @@ def test_coloured_letters_are_tricky():
     d["cellInfos"] = [{"x": x, "y": y, "fgColor": "#151515"} for x in range(d["w"]) for y in range(d["h"])]
     d["cellInfos"][0]["fgColor"] = "#ff0000"
     _, p = convert.convert(as_bytes(d), convert.Context(LAT, YESTERDAY, "f"))
-    assert len(p.tricky) == 1 and p.tricky[0].startswith("coloured letters (fgColor) at row 0 col 0, ")
+    assert len(p.tricky) == 1
+    assert p.tricky[0].startswith("coloured letters (fgColor) at row 0 col 0, ")
 
 
 @pytest.mark.parametrize(
