@@ -1,5 +1,5 @@
 """xdfetch: fetch crossword puzzles as their outlets serve them, and convert them to .xd."""
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 
 USER_AGENT = f"xdfetch/{__version__} (+https://github.com/century-arcade/xdfetch)"
