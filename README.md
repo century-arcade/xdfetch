@@ -1,5 +1,7 @@
 # xdfetch
 
+[![tests](https://img.shields.io/github/actions/workflow/status/century-arcade/xdfetch/test.yml?branch=master&label=tests)](https://github.com/century-arcade/xdfetch/actions/workflows/test.yml) [![pypi](https://img.shields.io/pypi/v/xdfetch?label=pypi)](https://pypi.org/project/xdfetch/)
+
 Downloads crossword puzzles and converts them to
 [.xd](https://github.com/century-arcade/xdformat), a plain-text crossword format.
 
