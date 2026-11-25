@@ -8,6 +8,7 @@ The fields used:
                                                       square, several characters a rebus
   cellInfos[{x, y, isCircled, bgColor, fgColor,        circles and shading; bars, voids and
              rightWall, bottomWall, isVoid}]           images are listed as tricky
+  preRevealIdxs[col][row]                             squares filled in from the start: tricky
   placedWords[{x, y, acrossNotDown, clueNum, nBoxes,
                clue: {clue, media}}]                   the clues; clue text has <i>, <b>, <sup>, <a>;
                                                       media[{URL, mediaType}] is a picture clue
@@ -137,6 +138,14 @@ def convert(data: bytes, ctx: Context) -> Puzzle:
             p.tricky.append(f"bar at row {y} col {x}")
         if ci.get("bgImage") or ci.get("image"):
             p.tricky.append(f"image in cell at row {y} col {x}")
+    # squares the player fills in from the start; xd has no way to mark them
+    reveal = d.get("preRevealIdxs")
+    if isinstance(reveal, list):
+        for x, col in enumerate(reveal[:w]):
+            if isinstance(col, list):
+                for y, shown in enumerate(col[:h]):
+                    if shown is True:
+                        p.tricky.append(f"pre-filled square at row {y} col {x}")
     # one colour on every cell is styling; otherwise the colour may be part of the theme,
     # which xd can't mark yet
     uniform = len(letter_colours) == w * h and len(set(letter_colours.values())) == 1

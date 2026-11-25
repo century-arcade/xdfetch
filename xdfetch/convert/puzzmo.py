@@ -8,9 +8,11 @@ The `puzzle` field is xd text in Puzzmo's dialect: ## Metadata (title, author, c
 rebus with ❶ ❷ keys, sometimes a stray style line), ## Grid ('#' or '.' blocks, rebus
 squares as their key character), ## Clues (A1. text ~ ANSWER, then metadata lines such as
 `A1 ^refs: D4` and, on Puzzmo's own crossword, `A1 ^hint: ...`), an optional ## Line Breaks
-(where the player may wrap a clue; ignored) and an optional ## Design
+(where the player may wrap a clue; ignored), an optional ## Design
 (a <style> naming letters, then a mask: `background: circle` or a gray
-`background-light: #CCCCCC` for shading).
+`background-light: #CCCCCC` for shading) and an optional ## Start (the grid as the solver
+first sees it, '.' for an empty square: anything else is filled in from the start). xd can't
+mark a pre-filled square, so each is listed as tricky, as is any section not named here.
 
 Conventions: Title is the puzzle's name, and a name that is only a date ("Tue, Nov 3,
 2026") is written out ("Tuesday, November 3, 2026"); Author is the byline Puzzmo shows;
@@ -40,6 +42,9 @@ import re
 from ..xd import BLOCK, REBUS_KEYS, Clue, Puzzle, answer_at, number_grid, plain
 from . import Context, ConvertError
 from .conde import STYLE, sections
+
+# the sections the converter reads, or knows it can leave out; any other is listed as tricky
+KNOWN_SECTIONS = {"Metadata", "Grid", "Clues", "Design", "Line Breaks", "Start"}
 
 
 def sniff(data: bytes) -> bool:
@@ -100,6 +105,16 @@ def convert(data: bytes, ctx: Context) -> Puzzle:
     rows = [row.strip() for row in sec["Grid"].strip().splitlines()]
     if not rows or len({len(x) for x in rows}) != 1:
         raise ConvertError("grid rows differ in length")
+
+    # a Start section is the grid as the solver first sees it: a square with anything in it
+    # is filled in for them. xd has no way to mark that, so each one is listed as tricky.
+    for r, row in enumerate(sec.get("Start", "").strip().splitlines()):
+        for c, ch in enumerate(row.strip()):
+            if ch not in ".#":
+                p.tricky.append(f"pre-filled square at row {r} col {c}")
+    for name in sec:
+        if name not in KNOWN_SECTIONS:
+            p.tricky.append(f"{name} section, not carried")
 
     # the clue lines first: a Schrödinger square ('*' in the grid) takes its letters from
     # the answers that cross it, the clue's own and those on its ^alt: lines

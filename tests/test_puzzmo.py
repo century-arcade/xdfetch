@@ -555,3 +555,18 @@ def test_editor_from_the_answer_when_it_has_one():
     assert p.headers["Editor"] == "Ed Itor"
     _, p = convert.convert(gameplay(text, editors=[{"publishingName": None, "name": "ed"}]), ctx("x", NOV9))
     assert p.headers["Editor"] == "ed"
+
+
+def test_start_section_squares_are_tricky():
+    start = "\n## Start\n\n.R...\n.#.#.\n.....\n.#.#.\n....❶\n"
+    _, p = convert.convert(team_answer(FIVE_TEXT + start), ctx("x", SUNDAY))
+    assert p.tricky == ["pre-filled square at row 0 col 1", "pre-filled square at row 4 col 4"]
+    assert p.to_xd() == FIVE_XD  # the puzzle itself is unchanged
+    empty = "\n## Start\n\n.....\n.#.#.\n.....\n.#.#.\n.....\n"
+    _, p = convert.convert(team_answer(FIVE_TEXT + empty), ctx("x", SUNDAY))
+    assert p.tricky == []  # an empty start grid fills nothing
+
+
+def test_unknown_section_is_tricky():
+    _, p = convert.convert(team_answer(FIVE_TEXT + "\n## Help\n\nSome words.\n"), ctx("x", SUNDAY))
+    assert p.tricky == ["Help section, not carried"]

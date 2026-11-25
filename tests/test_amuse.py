@@ -572,3 +572,18 @@ def test_row_params_editor_title_drop_and_copyright_year(registry):
     _, p = convert.convert(as_bytes(base), convert.Context(LAT, monday, "f"))
     assert p.headers["Copyright"] == "2026"
     assert "Editor" not in p.headers
+
+
+def test_pre_revealed_squares_are_tricky():
+    d = amuse()
+    d["preRevealIdxs"] = [[False] * d["h"] for _ in range(d["w"])]
+    _, p = convert.convert(as_bytes(d), convert.Context(LAT, YESTERDAY, "f"))
+    assert not any("pre-filled" in t for t in p.tricky)  # all false: nothing shown
+    d["preRevealIdxs"][2][0] = True  # box is by column: x=2, y=0
+    d["preRevealIdxs"][4][4] = True
+    _, p = convert.convert(as_bytes(d), convert.Context(LAT, YESTERDAY, "f"))
+    assert [t for t in p.tricky if "pre-filled" in t] == [
+        "pre-filled square at row 0 col 2",
+        "pre-filled square at row 4 col 4",
+    ]
+    assert p.check() == []
