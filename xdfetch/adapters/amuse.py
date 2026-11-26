@@ -175,10 +175,11 @@ class AmuseAdapter(Adapter):
                 raise
             r = self.http.get(fallback, interval=self.interval)
             # the page's title names its day ("The Puzzle - October 30"); links to other days
-            # name theirs, so only the title counts
+            # name theirs, so only the title counts. Outlets abbreviate the month too ("Nov. 4").
             stamp = f"{date:%B} {date.day}"
+            months = rf"(?:{date:%B}|{date:%b}\.?)"
             title = re.search(r"<title>([^<]*)", html.unescape(r.text))
-            if not title or not re.search(rf"\b{stamp}\b", title.group(1)):
+            if not title or not re.search(rf"\b{months}\s+{date.day}\b", title.group(1)):
                 raise NotFound(f"no page for {date}, and the undated page isn't titled {stamp}", url=url) from None
             used_fallback = True
             url = fallback
