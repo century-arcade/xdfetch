@@ -617,3 +617,31 @@ def test_coloured_squares_are_tricky():
     expected = ", ".join(f"row {y} col {x}" for x, y in sorted(cells, key=lambda cell: (cell[1], cell[0])))
     assert f"coloured squares (bgColor) at {expected}" in "\n".join(p.tricky)
     assert p.headers["Special"] == "shaded"
+
+
+@responses.activate
+def test_undated_fallback_accepts_an_abbreviated_month(registry, http):
+    dated = "https://www.vulture.com/article/daily-crossword-puzzle-november-4-2026.html"
+    undated = "https://www.vulture.com/article/daily-crossword-puzzle.html"
+    embed = (
+        '<iframe src="https://cdn3.amuselabs.com/nymag/crossword?id&#x3D;4e5f6a7b&amp;set&#x3D;nymag-vulture%2010x10">'
+    )
+    responses.add(responses.GET, dated, status=404)
+    responses.add(
+        responses.GET,
+        undated,
+        body=f"<title>Free Daily Crossword: The Artificial Friend Puzzle &mdash; Nov. 4</title>{embed}",
+    )
+    a = adapter.AmuseAdapter(registry["vulture.daily"], http)
+    (t,) = a.targets(dt.date(2026, 11, 4))
+    assert t.url == "https://cdn3.amuselabs.com/nymag/crossword?id=4e5f6a7b&set=nymag-vulture%2010x10"
+    assert [c.request.url for c in responses.calls] == [dated, undated]
+
+    # a different day with the same day number is still a mismatch
+    responses.replace(
+        responses.GET,
+        undated,
+        body=f"<title>Another Puzzle &mdash; Nov. 14</title>{embed}",
+    )
+    with pytest.raises(NotFound, match="isn't titled November 4"):
+        a.targets(dt.date(2026, 11, 4))
