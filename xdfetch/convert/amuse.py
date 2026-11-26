@@ -49,6 +49,8 @@ from . import Context, ConvertError
 from .ccxml import date_title
 
 BLOCK_CELL = "\x00"
+GREY_SQUARE_COLOURS = frozenset({"#ccc", "#cccccc"})
+"""The shading colours Amuse uses for a plain shaded square; any other colour is tricky."""
 
 
 def sniff(data: bytes) -> bool:
@@ -121,6 +123,7 @@ def convert(data: bytes, ctx: Context) -> Puzzle:
     circled: set[tuple[int, int]] = set()
     shaded: set[tuple[int, int]] = set()
     letter_colours: dict[tuple[int, int], str] = {}
+    square_colours: dict[tuple[int, int], str] = {}
     for ci in d.get("cellInfos") or []:
         x, y = ci.get("x"), ci.get("y")
         if not (isinstance(x, int) and isinstance(y, int)) or isinstance(x, bool) or isinstance(y, bool):
@@ -130,6 +133,7 @@ def convert(data: bytes, ctx: Context) -> Puzzle:
             circled.add((y, x))
         if ci.get("bgColor") and not is_block:  # a bgColor on a block is styling
             shaded.add((y, x))
+            square_colours[(y, x)] = str(ci["bgColor"]).lower()
         if ci.get("fgColor") and 0 <= x < w and 0 <= y < h:
             letter_colours[(y, x)] = str(ci["fgColor"]).lower()
         if ci.get("isVoid"):
@@ -152,6 +156,11 @@ def convert(data: bytes, ctx: Context) -> Puzzle:
     if letter_colours and not uniform:
         cells = ", ".join(f"row {r} col {c}" for r, c in sorted(letter_colours))
         p.tricky.append(f"coloured letters (fgColor) at {cells}")
+    coloured_squares = {cell: colour for cell, colour in square_colours.items() if colour not in GREY_SQUARE_COLOURS}
+    uniform_squares = len(square_colours) == w * h and len(set(square_colours.values())) == 1
+    if coloured_squares and not uniform_squares:
+        cells = ", ".join(f"row {r} col {c}" for r, c in sorted(coloured_squares))
+        p.tricky.append(f"coloured squares (bgColor) at {cells}")
     if circled and shaded:
         p.tricky.append("both circled and shaded squares; xd marks only one kind (shading kept as circles)")
     marked = circled | shaded

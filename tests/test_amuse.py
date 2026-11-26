@@ -607,3 +607,13 @@ def test_pre_revealed_squares_are_tricky():
         "pre-filled square at row 4 col 4",
     ]
     assert p.check() == []
+
+
+def test_coloured_squares_are_tricky():
+    d = amuse()
+    cells = [(x, y) for x in range(d["w"]) for y in range(d["h"]) if d["box"][x][y] != "\x00"][:2]
+    d["cellInfos"] = [{"x": x, "y": y, "bgColor": "#fff200"} for x, y in cells]
+    _, p = convert.convert(as_bytes(d), convert.Context(LAT, YESTERDAY, "f"))
+    expected = ", ".join(f"row {y} col {x}" for x, y in sorted(cells, key=lambda cell: (cell[1], cell[0])))
+    assert f"coloured squares (bgColor) at {expected}" in "\n".join(p.tricky)
+    assert p.headers["Special"] == "shaded"
