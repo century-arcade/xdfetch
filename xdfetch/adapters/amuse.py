@@ -166,6 +166,7 @@ class AmuseAdapter(Adapter):
         """The puzzle id from the outlet's own page for the date (the `page` param)."""
         template = self.outlet.param("page")
         url = date.strftime(template).replace("{month}", date.strftime("%B").lower()).replace("{d}", str(date.day))
+        used_fallback = False
         try:
             r = self.http.get(url, interval=self.interval)
         except NotFound:
@@ -173,14 +174,21 @@ class AmuseAdapter(Adapter):
             if not fallback:
                 raise
             r = self.http.get(fallback, interval=self.interval)
-            # the page's title names its day ("The Puzzle — October 30"); links to other days
+            # the page's title names its day ("The Puzzle - October 30"); links to other days
             # name theirs, so only the title counts
             stamp = f"{date:%B} {date.day}"
             title = re.search(r"<title>([^<]*)", html.unescape(r.text))
             if not title or not re.search(rf"\b{stamp}\b", title.group(1)):
                 raise NotFound(f"no page for {date}, and the undated page isn't titled {stamp}", url=url) from None
+            used_fallback = True
             url = fallback
         text = html.unescape(r.text)
+        if not used_fallback:
+            # A dated page can hold another day's puzzle (Vulture swaps a few). Its own
+            # publish date is the authority; a mismatch is a missing puzzle, retried later.
+            published = re.search(r'data-publish-date=["\'](\d{4}-\d{2}-\d{2})["\']', text)
+            if published and published.group(1) != date.isoformat():
+                raise NotFound(f"page for {date} carries the {published.group(1)} puzzle", url=url)
         for m in EMBED.finditer(text):
             if unquote(m.group(2)) == self.set:
                 return m.group(1)

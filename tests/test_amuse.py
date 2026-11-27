@@ -301,6 +301,26 @@ def test_id_from_page_and_set_with_space(registry, http):
 
 
 @responses.activate
+def test_dated_page_whose_publish_date_is_another_day_is_missing(registry, http):
+    page = "https://www.vulture.com/article/daily-crossword-puzzle-october-7-2026.html"
+    embed = '<iframe src="https://cdn3.amuselabs.com/nymag/crossword?id=0a1b2c3d&set=nymag-vulture%2010x10">'
+    responses.add(responses.GET, page, body=f'<div data-publish-date="2026-10-06"></div>{embed}')
+    a = adapter.AmuseAdapter(registry["vulture.daily"], http)
+    with pytest.raises(NotFound, match="carries the 2026-10-06 puzzle"):
+        a.targets(dt.date(2026, 10, 7))
+
+
+@responses.activate
+def test_dated_page_whose_publish_date_matches_is_used(registry, http):
+    page = "https://www.vulture.com/article/daily-crossword-puzzle-october-7-2026.html"
+    embed = '<iframe src="https://cdn3.amuselabs.com/nymag/crossword?id=0a1b2c3d&set=nymag-vulture%2010x10">'
+    responses.add(responses.GET, page, body=f'<div data-publish-date="2026-10-07"></div>{embed}')
+    a = adapter.AmuseAdapter(registry["vulture.daily"], http)
+    (t,) = a.targets(dt.date(2026, 10, 7))
+    assert t.url == "https://cdn3.amuselabs.com/nymag/crossword?id=0a1b2c3d&set=nymag-vulture%2010x10"
+
+
+@responses.activate
 def test_page_without_the_sets_embed_is_an_error(registry, http):
     page = "https://www.vulture.com/article/daily-crossword-puzzle-october-7-2026.html"
     responses.add(
