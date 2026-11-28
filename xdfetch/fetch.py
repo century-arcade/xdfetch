@@ -104,20 +104,34 @@ def plan(
     now: dt.datetime | None = None,
     refetch: bool = True,
     force: bool = False,
+    lookback: bool = False,
 ) -> list[Job]:
-    """Which (outlet, date) pairs to fetch for [start, end]."""
+    """Which (outlet, date) pairs to fetch for [start, end].
+
+    With `lookback`, each outlet's dates before `start` are looked at too, back as far as
+    it could still be owed a retry (RETRY_MISSING_DAYS) or a re-fetch (its longest
+    `refetch` offset): a nightly's window of yesterday..today then still reaches the
+    retries and re-fetches due on older dates. Those earlier dates only get the retries
+    and re-fetches the ledger says are due, never a first fetch, so a date the ledger
+    has never seen (one gxd may have from elsewhere) is left alone. Not with `force`."""
     now = now or utcnow()
     today = now.date()
     jobs: list[Job] = []
     for outlet in registry.select(ids):
         latest = outlet.latest_available(now)
-        for day in outlet.dates(start, min(end, latest)):
+        days = outlet.dates(start, min(end, latest))
+        if lookback and not force:
+            reach = max(RETRY_MISSING_DAYS, max(outlet.refetch, default=0) if refetch else 0)
+            earlier = outlet.dates(today - dt.timedelta(days=reach), min(start - dt.timedelta(days=1), latest))
+            days = earlier + days
+        for day in days:
             if force:
                 jobs.append(Job(outlet, day, "forced"))
                 continue
             last = ledger.last_attempt(outlet.id, day)
             if last is None:
-                jobs.append(Job(outlet, day, "new"))
+                if day >= start:
+                    jobs.append(Job(outlet, day, "new"))
             elif last.status in ("missing", "error"):
                 if (today - day).days <= RETRY_MISSING_DAYS:
                     jobs.append(Job(outlet, day, "retry"))
@@ -269,6 +283,7 @@ def run(
     force: bool = False,
     dry_run: bool = False,
     *,
+    lookback: bool = False,
     archive: ArchiveFactory = Archive,
     on_archive: OnArchive | None = None,
     report_title: str = REPORT_TITLE,
@@ -278,7 +293,7 @@ def run(
     now = now or utcnow()
     http = http or Http()
     ledger = Ledger.load(store)
-    jobs = plan(registry, ledger, start, end, ids, now=now, refetch=refetch, force=force)
+    jobs = plan(registry, ledger, start, end, ids, now=now, refetch=refetch, force=force, lookback=lookback)
     report = RunReport(title=report_title)
     if dry_run:
         report.results = [Result(j, "skipped", j.reason) for j in jobs]
