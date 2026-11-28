@@ -85,9 +85,15 @@ A date is `YYYY-MM-DD`, `today` or `yesterday` (UTC). Within the range, an outle
 only for the days it publishes (`days`, `since`) and only once the day's file should be up
 (`available_after`).
 
-A run looks only at the dates in its range. It does not work out what it missed since the
-last run, so a job that skips a night, or that should retry misses and do re-fetches,
-needs a range that reaches back. For example, with GNU `date`:
+A run looks only at the dates in its range, unless it's given `--lookback`: then each
+outlet's earlier dates are looked at too, back as far as a retry (3 days) or its longest
+`refetch` offset reaches, but only for the retries and re-fetches the ledger says are due,
+never a first fetch. That is what a nightly wants:
+
+    xdfetch run --store ./archive --start yesterday --end today --lookback
+
+A job that skips a night, so whose missed dates were never tried at all, needs a range that
+reaches back. For example, with GNU `date`:
 
     xdfetch run --store ./archive --start "$(date -d '8 days ago' +%F)"
 

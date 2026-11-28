@@ -188,6 +188,12 @@ def add_range_options(p: argparse.ArgumentParser, id_option: str = "--id") -> No
     )
     p.add_argument("--no-refetch", action="store_true", help="don't re-fetch recent puzzles to compare")
     p.add_argument("--force", action="store_true", help="fetch even what the ledger already has")
+    p.add_argument(
+        "--lookback",
+        action="store_true",
+        help="also retry and re-fetch what the ledger says is due on dates before the range, back as far "
+        "as the longest retry or refetch offset (for a nightly's yesterday..today)",
+    )
 
 
 def add_run_options(p: argparse.ArgumentParser) -> None:
@@ -202,7 +208,16 @@ def add_run_options(p: argparse.ArgumentParser) -> None:
 def cmd_plan(args: argparse.Namespace, registry: reg.Registry, store: Store) -> int:
     start, end = date_range(args)
     ledger = Ledger.load(store)
-    jobs = fetch.plan(registry, ledger, start, end, args.ids, refetch=not args.no_refetch, force=args.force)
+    jobs = fetch.plan(
+        registry,
+        ledger,
+        start,
+        end,
+        args.ids,
+        refetch=not args.no_refetch,
+        force=args.force,
+        lookback=getattr(args, "lookback", False),
+    )
     for j in jobs:
         print(f"{j.outlet.id}\t{j.date}\t{j.reason}")
     print(f"{len(jobs)} to fetch", file=sys.stderr)
@@ -225,6 +240,7 @@ def run_command(
         refetch=not args.no_refetch,
         force=args.force,
         dry_run=args.dry_run,
+        lookback=getattr(args, "lookback", False),
         **options,
     )
     print(report.markdown())

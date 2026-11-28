@@ -1,5 +1,6 @@
 """End to end against mocked HTTP: plan, run, archive, ledger, refetch, and the hooks."""
 
+import dataclasses
 import datetime as dt
 import functools
 import io
@@ -11,7 +12,8 @@ from conftest import NOW, RAW, YESTERDAY, present
 from xdfetch import adapters, archive, fetch
 from xdfetch.archive import Archive
 from xdfetch.http import NotFound
-from xdfetch.ledger import Ledger
+from xdfetch.ledger import Entry, Ledger
+from xdfetch.registry import Registry
 from xdfetch.store import LocalStore
 
 DAILY = "https://example.com/feed/ex261028.xml"
@@ -231,3 +233,68 @@ def test_store_keys():
     assert fetch.archive_key("20261029-120000-www.zip", NOW) == "downloads/2026/20261029-120000-www.zip"
     assert fetch.archive_key("x.zip", NOW, "incoming") == "incoming/2026/x.zip"
     assert fetch.report_key(NOW) == "reports/2026/20261029-120000-report.md"
+
+
+def test_plan_lookback_reaches_due_retries_and_refetches(engine_registry):
+    """A nightly's yesterday..today with --lookback (century-arcade/gxd-downloader#22): earlier
+    dates get the retries and re-fetches the ledger says are due, and nothing else."""
+    now = dt.datetime(2026, 11, 2, 8, 30, tzinfo=dt.UTC)
+    today = now.date()
+    yesterday = today - dt.timedelta(days=1)
+    ledger = Ledger.parse(
+        "pubid\tdate\tstatus\n"
+        "example.daily\t2026-10-29\tmissing\n"  # 4 days old: past retrying
+        "example.daily\t2026-10-30\tmissing\n"  # 3 days old: retried
+        "example.daily\t2026-10-31\tok\n"  # 2 days old, fetched on days 0 and 1: offset 2 is due
+        "example.daily\t2026-10-31\tsame\n"
+        "example.daily\t2026-11-01\tok\n"
+        "example.late\t2026-10-29\terror\n"
+        "example.late\t2026-10-30\terror\n"
+        "example.late\t2026-10-31\tok\n"  # no refetch column: settled
+    )
+    # 2026-10-28 has no row: a date the ledger never saw isn't a first fetch when looked back on
+    plain = fetch.plan(engine_registry, ledger, yesterday, today, ["example.daily", "example.late"], now=now)
+    assert [(j.outlet.id, str(j.date), j.reason) for j in plain] == [
+        ("example.daily", "2026-11-01", "refetch"),
+        ("example.daily", "2026-11-02", "new"),
+        ("example.late", "2026-11-01", "new"),
+    ]
+    back = fetch.plan(
+        engine_registry, ledger, yesterday, today, ["example.daily", "example.late"], now=now, lookback=True
+    )
+    assert [(j.outlet.id, str(j.date), j.reason) for j in back] == [
+        ("example.daily", "2026-10-30", "retry"),
+        ("example.daily", "2026-10-31", "refetch"),
+        ("example.daily", "2026-11-01", "refetch"),
+        ("example.daily", "2026-11-02", "new"),
+        ("example.late", "2026-10-30", "retry"),
+        ("example.late", "2026-11-01", "new"),
+    ]
+    # once offset 2 has been fetched, 2026-10-31 is settled
+    ledger.append(Entry("example.daily", "2026-10-31", "", "", "", "", "", "", "same", ""))
+    again = fetch.plan(engine_registry, ledger, yesterday, today, ["example.daily"], now=now, lookback=True)
+    assert "2026-10-31" not in [str(j.date) for j in again]
+    # --force doesn't look back
+    forced = fetch.plan(
+        engine_registry, ledger, yesterday, today, ["example.daily"], now=now, force=True, lookback=True
+    )
+    assert [str(j.date) for j in forced] == ["2026-11-01", "2026-11-02"]
+
+
+def test_plan_lookback_reaches_the_longest_refetch_offset(engine_registry):
+    """An outlet re-fetched on day 7 is looked back on 7 days; with re-fetches off, 3 (retries)."""
+    weekly = dataclasses.replace(engine_registry["example.daily"], refetch=(1, 2, 7))
+    registry = Registry([weekly if o.id == weekly.id else o for o in engine_registry.outlets])
+    now = dt.datetime(2026, 11, 8, 8, 30, tzinfo=dt.UTC)
+    ledger = Ledger.parse(
+        "pubid\tdate\tstatus\n"
+        "example.daily\t2026-11-01\tok\n"
+        "example.daily\t2026-11-01\tsame\n"
+        "example.daily\t2026-11-01\tsame\n"  # day 7 is due: a fourth fetch
+        "example.daily\t2026-10-31\tok\n"  # 8 days old: out of reach
+    )
+    day = dt.date(2026, 11, 7)
+    jobs = fetch.plan(registry, ledger, day, day, ["example.daily"], now=now, lookback=True)
+    assert [(str(j.date), j.reason) for j in jobs] == [("2026-11-01", "refetch"), ("2026-11-07", "new")]
+    jobs = fetch.plan(registry, ledger, day, day, ["example.daily"], now=now, lookback=True, refetch=False)
+    assert [(str(j.date), j.reason) for j in jobs] == [("2026-11-07", "new")]
